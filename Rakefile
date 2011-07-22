@@ -13,8 +13,12 @@ task :deploy do
 
   puts "Compiling and compressing javascripts..."
   
-  target = "lib/shove.js"
-  target_compressed = "lib/shove.min.js"
+  unless Dir.exists?("target")
+    Dir.mkdir("target")
+  end
+  
+  target = "target/shove.js"
+  target_compressed = "target/shove.min.js"
   
   system "coffee --join #{target} --compile src/*.coffee"
   
