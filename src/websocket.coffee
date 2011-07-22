@@ -40,9 +40,9 @@ THE SOFTWARE.
       socket: null
     
       ready: ->
-        this.proxy = document.getElementById("wsproxy")
+        @proxy = document.getElementById("wsproxy")
         while this.queue.length > 0
-          this.queue.shift.call(this)
+          @queue.shift.call(this)
         this
       
       onload: (msg) ->
@@ -51,30 +51,30 @@ THE SOFTWARE.
         this
       
       register: (socket) ->
-        if this.proxy == null
-          this.queue.push(() => this.register(socket))         
+        if @proxy == null
+          @queue.push(() => @register(socket))         
         else
-          this.socket = socket;
-          this.proxy.open(socket.uri)
+          @socket = socket;
+          @proxy.open(socket.uri)
         this
 
       send: (data) ->
-        if this.proxy == null
-          this.queue.push(() => this.send(data))
+        if @proxy == null
+          @queue.push(() => @send(data))
         else
-          this.proxy.send(data)
+          @proxy.send(data)
         this
 
       onopen: ->
-        this.socket.onopen({})
+        @socket.onopen({})
         this
 
       onmessage: (data) ->
-        this.socket.onmessage({data:data})
+        @socket.onmessage({data:data})
         this
 
       onclose: ->
-        this.socket.onclose({})
+        @socket.onclose({})
         this
  
     class WebSocket
@@ -83,7 +83,7 @@ THE SOFTWARE.
   
       send: (data) -> WebSocketProxy.send(data)
 
-    swfobject.embedSWF("http://static-dev.shove.io/a01/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {  
+    swfobject.embedSWF("http://static-dev.shove.io/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {  
     },{
       allowscriptaccess: "always",
       allownetworking: "all"

@@ -21,7 +21,7 @@ THE SOFTWARE.
 ###
 
 host = (() ->
-  hosts = ["dev","dev1"]
+  hosts = ["dev"]
   itr = 0
   () ->
     hosts[itr++ % hosts.length]

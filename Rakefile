@@ -1,4 +1,7 @@
 require "yuicompressor"
+require "jasmine"
+
+
 
 task :default => [:build]
 
@@ -8,29 +11,30 @@ end
 
 task :deploy do
 
+  puts "Compiling and compressing javascripts..."
+  
   target = "lib/shove.js"
   target_compressed = "lib/shove.min.js"
   
   system "coffee --join #{target} --compile src/*.coffee"
   
-  
   js = File.open(target).read
+  
+  # minified for production only!
+  js.gsub! "[\"dev\"]", "[_production_hosts_]"
+  js.gsub! "static-dev.shove.io", "static.shove.io"
+    
   jsc = YUICompressor.compress_js(js, :munge => true)
+  
   puts "~#{((jsc.length.to_f / js.length.to_f) * 100).round}% compression ratio achieved."
   
   File.open(target_compressed, "w") do |f|
-    f.write "/*	Copyright 2011 Dan Simpson under the MIT License <http://www.opensource.org/licenses/mit-license.php> */\n"
+    f.write File.open("lib/swfobject.js").read
+    f.write "\n"
+    f.write "//Copyright 2011 Dan Simpson under the MIT License <http://www.opensource.org/licenses/mit-license.php>\n"
     f.write jsc
   end
   
 end
 
-begin
-  require 'jasmine'
-  load 'jasmine/tasks/jasmine.rake'
-rescue LoadError
-  task :jasmine do
-    abort "Jasmine is not available. In order to run jasmine, you must: (sudo) gem install jasmine"
-  end
-end
-
+load "jasmine/tasks/jasmine.rake"

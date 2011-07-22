@@ -73,7 +73,7 @@ describe("Shove", function() {
     runs(function() {
       channel.broadcast("test", "bye");
     });
-    waits(20);
+    waits(50);
     
     it("should not receive messages for an unsubscribed channel", function() {
       expect(messages.length).toEqual(0);
@@ -135,11 +135,11 @@ describe("Shove", function() {
     });
     
     it("should receive subscribed and presence event", function() {
-      expect(messages.pop().event).toEqual("$subscribed");
-      expect(messages.pop().event).toEqual("$presence");
+      expect(messages.shift().event).toEqual("$subscribed");
+      expect(messages.shift().event).toEqual("$presence");
     });
 
-    it("should trigger a unauthorized event", function() {
+    it("should trigger a presence event", function() {
       expect(_presence).toEqual(true);
     });
     

@@ -145,6 +145,7 @@ class Client
         
 # Create the global Shove object
 window.Shove = new Client()
+
 if window.jQuery
   $(() -> $.shove = window.Shove)
 
