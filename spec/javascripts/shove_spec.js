@@ -12,6 +12,10 @@ describe("Shove", function() {
       _connected = false;
     });
     
+    Shove.on("*", function(e) {
+      console.log(e);
+    });
+    
     Shove.connect("deadbeef")
 
     it("should connect", function() {
@@ -63,6 +67,17 @@ describe("Shove", function() {
       expect(m.user).toEqual(Shove.identity());
       expect(m.event).toEqual("test");
       expect(m.data).toEqual("hey");
+    });
+    
+    runs(function() {
+      channel.broadcast("test", "测试");
+    });
+    waits(20);
+    
+    it("should handle multibyte chars", function() {
+      var m = messages.pop();
+      console.log(m);
+      expect(m.data).toEqual("测试");
     });
     
     runs(function() {
