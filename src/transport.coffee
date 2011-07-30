@@ -1,128 +1,113 @@
-###
-Copyright (C) 2011 by Dan Simpson
+# Copyright (C) 2011 by Dan Simpson
+# Usage restrictions provided with the MIT License
+# http://en.wikipedia.org/wiki/MIT_License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-###
-
-host = (() ->
-  hosts = ["dev"]
-  itr = 0
-  () ->
-    hosts[itr++ % hosts.length]
-)()
-
-###
-Transport
-
-Base class for transporting data to
-and from the shove network.
-
-The transport layer also handles encoding
-and decoding of the shove frames.
-
-###
-_transportEvents = [
+transportEvents = [
   "connect"
   "connecting"
   "disconnect"
   "message"
   "reconnect"
   "error"
+  "statechange"
 ]
 
+# Script tag helpers
+head = document.getElementsByTagName("head")[0]
+injectScript = (id, url) ->
+  script = document.createElement("script")
+  script.setAttribute("src", url)
+  script.setAttribute("type", "text/javascript")
+  script.setAttribute("id", id)
+  head.appendChild(script)
+
+removeScript = (id) -> head.removeChild(document.getElementById(id))
+
+#### Transport
+
+# Base class for transporting data to
+# and from the shove network.
+# The transport layer also handles encoding
+# and decoding of the shove frames.
 class Transport
-  constructor: () ->
+  constructor: (@network, @secure) ->
     @queue = []
-    @connected = false
+    @state = "DISCONNECTED"
     @callbacks = {}
     @connections = 0
     @forcedc = false
+    @hosts = null
   
-  ###
-  Bind an event to a function callback
+  requestHosts: () ->
+    injectScript("hostlookup", "http://api-dev.shove.io:4000/#{@network}/nodes") 
   
-  @param event
-    connect
-    connecting
-    disconnect
-    message
-    reconnect
-    error
+  updateHosts: (hosts) ->
+    removeScript("hostlookup")
+    if hosts
+      @hosts = hosts
+      @connect()
+    else
+      @dispatch("error", "No hosts found for network #{@network}")
+    
+  host: ->
+    @hosts[@connections % @hosts.length]
   
-  @param cb the callback to execute on event
-  ###
+  # Bind an event to a function callback
+  # `event` options:
+  # connect
+  # connecting
+  # disconnect
+  # message
+  # reconnect
+  # error
+  # `cb` the callback to execute on event
   on: (event, cb) ->
-    if _transportEvents.indexOf(event) == -1
-      console.error("Unknow event #{event}.  Valid events: #{_transportEvents.join(", ")}")
+    if transportEvents.indexOf(event) == -1
+      console.error("Unknow event #{event}.  Valid events: #{transportEvents.join(", ")}")
     else
       unless @callbacks[event]
         @callbacks[event] = []
       @callbacks[event].push(cb)
   
-  ###
-  Connect the transport to the endpoint
-  ###
+  # Connect the transport to the endpoint
   connect: ->
     console.error("abstract method connect called on transport")
     
-  ###
-  Disconnect the transport
-  ###
+  # Disconnect the transport
   disconnect: ->
     console.error("abstract method disconnect called on transport")
 
-  ###
-  Send data on the transport
-  @params data - the data to send
-  @returns this
-  ###
+  # Send data on the transport
+  # `data` - the data to send
   send: (data) ->
-    unless @connected
+    unless @state == "CONNECTED"
       @queue.push(data)
     else
-      @_send(@_encode(data))
+      @transmit(@encode(data))
     this
               
-  ###
-  Private Methods
-  ###
+  #### Private methods
 
   # Dispatch an event to all bound callbacks
-  _dispatch: (event, args...) ->
+  dispatch: (event, args...) ->
     if @callbacks[event]
       for callback in @callbacks[event]
         callback.apply(window, args)
     this
           
   # Process the message event
-  _process: (msg) ->
-    @_dispatch("message", @_decode(msg.data))
+  process: (msg) ->
+    @dispatch("message", @decode(msg.data))
   
   # Connected handler
-  _connected: (e) ->
-    @connected = true
+  connected: (e) ->
+    @state = "CONNECTED"
     @connections++
     
     if @connections > 1
-      @_dispatch("reconnect")
+      @dispatch("reconnect")
     else
-      @_dispatch("connect")
+      @dispatch("connect")
       
     while @queue.length > 0
       @send(@queue.shift())
@@ -130,23 +115,23 @@ class Transport
     this
 
   # Disconnection handler
-  _disconnected: ->
-    @connected = false
-    @_dispatch("disconnect")
+  disconnected: ->
+    @state = "DISCONNECTED"
+    @dispatch("disconnect")
     unless @forcedc
       setTimeout((=> @connect), 5000)
     this
     
-  # Real send
-  _send: (data) ->
+  # Transmit data
+  # `data` the encoded data to send
+  transmit: (data) ->
     console.error("Transport does not support sending frames.")
   
-  ###
-  Don't touch unless you understand this
-  completely.. it needs to be cleaned up though
-  possibly bring down the internal binary protocol?
-  ###
-  _decode: (msg) ->
+  # Don't touch unless you understand this
+  # completely.. it needs to be cleaned up though
+  # possibly bring down the internal binary protocol?
+  # `msg` the encoded message to decode
+  decode: (msg) ->
     result = {}
     len = msg.length
     idx = 0
@@ -171,30 +156,37 @@ class Transport
     
     result
 
-  ###
-  encode a shove message for the wire
-  ###
-  _encode: (msg) ->
+  # encode a shove message for the wire
+  # `msg` the shove message object
+  encode: (msg) ->
     "#{msg.channel}!#{msg.event}!#{msg.to || ""}!!#{msg.data || ""}"
 
-###
-WebSocketTransport
+#### WebSocketTransport
 
-Transport that utilizes native WebSockets or
-a custom version of Flash WebSockets
-###
+# Transport that utilizes native WebSockets or
+# a custom version of Flash WebSockets
 class WebSocketTransport extends Transport
-  constructor: (@network, @secure) ->
-    super
+  constructor: (network, secure) ->
+    super(network, secure)
 
   # Override
   connect: ->
-    @_dispatch("connecting")
+    # skip if we are connected
+    if @state == "CONNECTED"
+      return
+
+    # do a host lookup
+    unless @hosts
+      @dispatch("hostlookup")
+      @requestHosts()
+      return
+       
+    @dispatch("connecting")
     @socket = new WebSocket(
-      "#{if @secure then "wss" else "ws"}://ws-#{host()}.shove.io/#{@network}")
-    @socket.onclose = => @_disconnected()
-    @socket.onmessage = (e) => @_process(e)
-    @socket.onopen = => @_connected()
+      "#{if @secure then "wss" else "ws"}://ws-#{@host()}.shove.io/#{@network}")
+    @socket.onclose = => @disconnected()
+    @socket.onmessage = (e) => @process(e)
+    @socket.onopen = => @connected()
     @forcedc = false
   
   # Override
@@ -203,18 +195,17 @@ class WebSocketTransport extends Transport
     @socket.close()
   
   # Override
-  _send: (frame) ->
+  transmit: (frame) ->
     @socket.send(frame)
 
-###
-CometTransport
 
-Transport that utilizes JSONP Comet for
-clients that do not support WebSockets
-###    
+#### CometTransport
+
+# Transport that utilizes JSONP Comet for
+# clients that do not support WebSockets  
 class CometTransport extends Transport
-  constructor: (@network, @secure) ->
-    super
+  constructor: (network, secure) ->
+    super(network, secure)
     @seed = 1
     @started = null
     @requesting = false
@@ -223,7 +214,7 @@ class CometTransport extends Transport
     window["_scb"] = (event) => @onLoad(event)
 
   connect: ->
-    @url = "#{if @secure then "https" else "http"}://poll-#{host()}.shove.io/#{@network}"
+    @url = "#{if @secure then "https" else "http"}://poll-#{@host()}.shove.io/#{@network}"
     @request()
 
   request: (data) ->
@@ -231,56 +222,40 @@ class CometTransport extends Transport
     @timer = setTimeout((() => @onTimeout()), @timeout)
     @addTag(@getUrl())
 
-  addTag: (url) ->
-    script = document.createElement("script")
-    script.setAttribute("src", url)
-    script.setAttribute("type", "text/javascript")
-    script.setAttribute("id", "comet" + @seed)
-    document.getElementsByTagName("head")[0].appendChild(script)
+  addTag: (url) -> injectScript("comet#{@seed}", url)
 
-  ###
-  remove the script tag from the dom
-  to prevent possible memory leaks
-  Note: does not stop the request on a unfinished request (some browsers?)
-  ###
-  removeTag: ->
-    document.getElementsByTagName("head")[0].removeChild(document.getElementById("comet#{@seed++}"))
+  # remove the script tag from the dom
+  # to prevent possible memory leaks
+  # Note: does not stop the request on a unfinished request (some browsers?)
+  removeTag: -> removeScript("comet#{@seed++}")
 
-  ###
-  Get the request url, based on pending messages,
-  randomness, and subscriber.
-  ###
+  # Get the request url, based on pending messages,
+  # randomness, and subscriber.
   getUrl: ->
     suffix = "/" + Math.random();
     if @queue.length > 0
       suffix += "/" + @queue.shift();
     "#{@url}#{suffix}"
 
-  ###
-  Called by JSONP script
-  ###
+  # Called by JSONP script
   onLoad: (data) ->
     if data == "connect"
-      @_connected()
+      @connected()
     else
-      @_process({
+      @process({
         data: data
       })
 
     clearTimeout(@timer);
     @timer = setTimeout((=> @request()), 20);
 
-  ###
-  Called by a timer (possibly remove?)
-  ###
+  # Called by a timer (possibly remove?)
   onTimeout: ->
     @removeTag()
     @request()
 
-  ###
-  Stop current request and send another
-  ###
-  send: (message) ->
+  # Stop current request and send another
+  transmit: (message) ->
     @removeTag()
     @request(message)
 

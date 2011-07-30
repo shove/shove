@@ -1,24 +1,6 @@
-###
-Copyright (C) 2011 by Dan Simpson
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-###
+# Copyright (C) 2011 by Dan Simpson
+# Usage restrictions provided with the MIT License
+# http://en.wikipedia.org/wiki/MIT_License
 
 class Client
   constructor: () ->
@@ -31,14 +13,12 @@ class Client
     @debugMode = false
     @secure = false
   
-  ###
-  Connect to a network
-  @param {String} network The name of the network
-  @return {Shove} The global Shove object
-  ###
+
+  # Connect to a network
+  # `network` The name of the network
   connect: (network) ->
     @network = network
-    unless @transport && @transport.connected
+    unless @transport && @transport.state == "CONNECTED"
       if window.WebSocket == undefined
         @transport = new CometTransport(@network, @secure)
       else	  
@@ -51,60 +31,43 @@ class Client
       @transport.connect();
     this
        
-  ###
-  Disconnect from current network
-  @return {Shove} The global Shove object
-  ###
+  # Disconnect from current network
   disconnect: ->
     @transport.disconnect()
     this
 
-  ###
-  Return a channel object for a given network
-  and subscribe to it on the remote host if not
-  currently subscribed
-  @param {String} name The name of the channel
-  @return {Channel} The channel object
-  ###
+  # Return a channel object for a given network
+  # and subscribe to it on the remote host if not
+  # currently subscribed
+  # `name` The name of the channel
   channel: (name) ->
     unless @channels[name]
       @channels[name] = new Channel(name, @transport)
     @channels[name]
 
-  ###
-  Add a network event listener
-  @param {String} event The name of the event
-  @param {Function} cb The callback function to call
-  when the event arises
-  @return {Shove} The global Shove object
-  ###
+  # Add a network event listener
+  # `event` The name of the event
+  # `cb` The callback function to call
   on: (event, cb) ->
     unless @events[event]
       @events[event] = []
     @events[event].push(cb)
     this
 
-  ###
-  @return The identity of the browser which
-  is unique to the shove network.
-  ###
+  # The identity of the current shove session
   identity: ->
     @id
 
-  ###
-  Toggle debugging
-  @param {Boolean} option true or false
-  @return {Shove} The global Shove object
-  ###
+  # Toggle debugging
+  # `option` true or false
   debug: (option) ->
     @debugMode = option || true
     this
 
-  ###
-  Send a message directly to another on the network
-  @param {Boolean} option true or false
-  @return {Shove} The global Shove object
-  ###
+  # Send a message directly to another on the network
+  # `client` the client identity to send to
+  # `event` the event to trigger remotely
+  # `message` the event data
   direct: (client, event, message) ->
     @transport.send({
       event: event,
@@ -113,9 +76,9 @@ class Client
     })
     this
 
-  ###
-  Process a shove message
-  ###
+  setAvailableNodes: (nodes) -> @transport.updateHosts(nodes)
+
+  # Process a shove message
   _process: (e) ->
     if e.channel
       if @channels[e.channel]
@@ -129,9 +92,7 @@ class Client
     else
       console.error("Unrecognized frame", e)
 
-  ###
-  Dispatch event to listeners
-  ###
+  # Dispatch event to listeners
   _dispatch: (event, args...) ->
     if @events[event]
       for callback in @events[event]

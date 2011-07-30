@@ -13,10 +13,9 @@ describe("Shove", function() {
     });
     
     Shove.on("*", function(e) {
-      console.log(e);
     });
     
-    Shove.connect("deadbeef")
+    Shove.connect("test")
 
     it("should connect", function() {
       expect(_connecting).toEqual(true);
@@ -30,7 +29,7 @@ describe("Shove", function() {
 
 
   it("should be connected", function() {
-    expect(Shove.transport.connected).toEqual(true);
+    expect(Shove.transport.state == "CONNECTED").toEqual(true);
     expect(_connected).toEqual(true);
   });
     
@@ -76,7 +75,6 @@ describe("Shove", function() {
     
     it("should handle multibyte chars", function() {
       var m = messages.pop();
-      console.log(m);
       expect(m.data).toEqual("测试");
     });
     
@@ -165,11 +163,11 @@ describe("Shove", function() {
     runs(function() {
       Shove.disconnect();
     });
-    waits(20);
+    waits(30);
   });
   
   it("should disconnect", function() {
-    expect(Shove.transport.connected).toEqual(false);
+    expect(Shove.transport.state == "DISCONNECTED").toEqual(false);
   });
   
   it("should trigger a disconnect event", function() {

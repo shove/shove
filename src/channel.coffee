@@ -1,24 +1,8 @@
-###
-Copyright (C) 2011 by Dan Simpson
+# Copyright (C) 2011 by Dan Simpson
+# Usage restrictions provided with the MIT License
+# http://en.wikipedia.org/wiki/MIT_License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-###
+#### Channel
 
 class Channel
 
@@ -29,21 +13,24 @@ class Channel
     @filters = []
     @subscribe()
 
-  ###
-  Bind a function to an event
-  The function will be called when
-  any message with event matching event
-  is received
-  ###
+  
+  # Bind a function to an event
+  # The function will be called when
+  # any message with event matching event
+  # is received
+  # `event` the event to trigger on
+  # `cb` the callback to execute on trigger
   on: (event, cb) ->
     unless @events[event]
       @events[event] = []
     @events[event].push(cb)
     this
 
-  ###
-  Process an event to all bound listeners
-  ###
+  
+  # Process an event to all bound listeners
+  # `event` the event name
+  # `message` the data package
+  # `user` the user it's from
   process: (event, message, user) ->
     e = {
       event: event
@@ -68,10 +55,10 @@ class Channel
     
     this
     
-  ###
-  Broadcast an event and message on this
-  channel
-  ###
+  # Broadcast an event and message on this
+  # channel
+  # `event` the event to broadcast
+  # `message` the message to broadcast
   broadcast: (event, message) ->
     @transport.send({
       event: event,
@@ -79,46 +66,40 @@ class Channel
       data: message
     })
 
-  ###
-  Unregister this channel with shove
-  ###
+  # Unregister this channel with shove
   unsubscribe: ->
     @transport.send({
       event: "$unsubscribe",
       channel: @name
     })
 
-  ###
-  Register this channel with shove
-  ###
+  # Register this channel with shove
   subscribe: ->
     @transport.send({
       event: "$subscribe",
   		channel: @name
     })
 
-  ###
-  Add a message filter.  Message filters are called
-  before any events propogate, so that you can apply
-  logic to every message on every channel.
-
-  Example:
-  Shove.filter(function(e) {
-    e.timestamp = new Date();
-    if(e.timestamp > END_OF_THE_WORLD) {
-      return false;
-    }
-    return e;
-  });
-
-  The above example will append a timestamp to all
-  messages and also prevent them from propogating
-  by returning false when the END_OF_THE_WORLD date
-  has passed
-
-  @param {Function} fn The filter function to call
-  @return {Shove} The global Shove object
-  ###
+  
+  # Add a message filter.  Message filters are called
+  # before any events propogate, so that you can apply
+  # logic to every message on every channel.
+  #
+  # Example:
+  # Shove.filter(function(e) {
+  #   e.timestamp = new Date();
+  #   if(e.timestamp > END_OF_THE_WORLD) {
+  #     return false;
+  #   }
+  #   return e;
+  # });
+  #
+  # The above example will append a timestamp to all
+  # messages and also prevent them from propogating
+  # by returning false when the END_OF_THE_WORLD date
+  # has passed
+  #
+  # `fn` fn The filter function to call
   filter: (fn) ->
     @filters.push(fn)
     this

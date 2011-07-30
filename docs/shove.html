@@ -1,0 +1,89 @@
+<!DOCTYPE html>  <html> <head>   <title>shove.coffee</title>   <meta http-equiv="content-type" content="text/html; charset=UTF-8">   <link rel="stylesheet" media="all" href="docco.css" /> </head> <body>   <div id="container">     <div id="background"></div>            <div id="jump_to">         Jump To &hellip;         <div id="jump_wrapper">           <div id="jump_page">                                           <a class="source" href="channel.html">                 channel.coffee               </a>                                           <a class="source" href="shove.html">                 shove.coffee               </a>                                           <a class="source" href="transport.html">                 transport.coffee               </a>                                           <a class="source" href="websocket.html">                 websocket.coffee               </a>                        </div>         </div>       </div>          <table cellpadding="0" cellspacing="0">       <thead>         <tr>           <th class="docs">             <h1>               shove.coffee             </h1>           </th>           <th class="code">           </th>         </tr>       </thead>       <tbody>                               <tr id="section-1">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-1">&#182;</a>               </div>               <p>Copyright (C) 2011 by Dan Simpson
+Usage restrictions provided with the MIT License
+http://en.wikipedia.org/wiki/MIT_License</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nx">Client</span>
+  <span class="nv">constructor: </span><span class="nf">() -&gt;</span>
+    <span class="vi">@transport = </span><span class="kc">null</span>
+    <span class="vi">@url = </span><span class="kc">null</span>
+    <span class="vi">@channels = </span><span class="p">{}</span>
+    <span class="vi">@network = </span><span class="kc">null</span>
+    <span class="vi">@events = </span><span class="p">{}</span>
+    <span class="vi">@id = </span><span class="kc">null</span>
+    <span class="vi">@debugMode = </span><span class="kc">false</span>
+    <span class="vi">@secure = </span><span class="kc">false</span>
+  </pre></div>             </td>           </tr>                               <tr id="section-2">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-2">&#182;</a>               </div>               <p>Connect to a network
+<code>network</code> The name of the network</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">connect: </span><span class="nf">(network) -&gt;</span>
+    <span class="vi">@network = </span><span class="nx">network</span>
+    <span class="nx">unless</span> <span class="nx">@transport</span> <span class="o">&amp;&amp;</span> <span class="nx">@transport</span><span class="p">.</span><span class="nx">state</span> <span class="o">==</span> <span class="s2">&quot;CONNECTED&quot;</span>
+      <span class="k">if</span> <span class="nb">window</span><span class="p">.</span><span class="nx">WebSocket</span> <span class="o">==</span> <span class="kc">undefined</span>
+        <span class="vi">@transport = </span><span class="k">new</span> <span class="nx">CometTransport</span><span class="p">(</span><span class="nx">@network</span><span class="p">,</span> <span class="nx">@secure</span><span class="p">)</span>
+      <span class="k">else</span>	  
+        <span class="vi">@transport = </span><span class="k">new</span> <span class="nx">WebSocketTransport</span><span class="p">(</span><span class="nx">@network</span><span class="p">,</span> <span class="nx">@secure</span><span class="p">)</span>
+      <span class="nx">@transport</span><span class="p">.</span><span class="kc">on</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">@_process</span><span class="p">.</span><span class="nx">apply</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">arguments</span><span class="p">))</span>
+      <span class="nx">@transport</span><span class="p">.</span><span class="kc">on</span><span class="p">(</span><span class="s2">&quot;connect&quot;</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">@_dispatch</span><span class="p">(</span><span class="s2">&quot;connect&quot;</span><span class="p">))</span>
+      <span class="nx">@transport</span><span class="p">.</span><span class="kc">on</span><span class="p">(</span><span class="s2">&quot;connecting&quot;</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">@_dispatch</span><span class="p">(</span><span class="s2">&quot;connecting&quot;</span><span class="p">))</span>
+      <span class="nx">@transport</span><span class="p">.</span><span class="kc">on</span><span class="p">(</span><span class="s2">&quot;reconnect&quot;</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">@_reconnect</span><span class="p">())</span>
+      <span class="nx">@transport</span><span class="p">.</span><span class="kc">on</span><span class="p">(</span><span class="s2">&quot;disconnect&quot;</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">@_dispatch</span><span class="p">(</span><span class="s2">&quot;disconnect&quot;</span><span class="p">))</span>
+      <span class="nx">@transport</span><span class="p">.</span><span class="nx">connect</span><span class="p">();</span>
+    <span class="k">this</span>
+       </pre></div>             </td>           </tr>                               <tr id="section-3">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-3">&#182;</a>               </div>               <p>Disconnect from current network</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">disconnect: </span><span class="o">-&gt;</span>
+    <span class="nx">@transport</span><span class="p">.</span><span class="nx">disconnect</span><span class="p">()</span>
+    <span class="k">this</span></pre></div>             </td>           </tr>                               <tr id="section-4">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-4">&#182;</a>               </div>               <p>Return a channel object for a given network
+and subscribe to it on the remote host if not
+currently subscribed
+<code>name</code> The name of the channel</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">channel: </span><span class="nf">(name) -&gt;</span>
+    <span class="nx">unless</span> <span class="nx">@channels</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+      <span class="nx">@channels</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Channel</span><span class="p">(</span><span class="nx">name</span><span class="p">,</span> <span class="nx">@transport</span><span class="p">)</span>
+    <span class="nx">@channels</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span></pre></div>             </td>           </tr>                               <tr id="section-5">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-5">&#182;</a>               </div>               <p>Add a network event listener
+<code>event</code> The name of the event
+<code>cb</code> The callback function to call</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="kc">on</span><span class="o">:</span> <span class="nf">(event, cb) -&gt;</span>
+    <span class="nx">unless</span> <span class="nx">@events</span><span class="p">[</span><span class="nx">event</span><span class="p">]</span>
+      <span class="nx">@events</span><span class="p">[</span><span class="nx">event</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="nx">@events</span><span class="p">[</span><span class="nx">event</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">cb</span><span class="p">)</span>
+    <span class="k">this</span></pre></div>             </td>           </tr>                               <tr id="section-6">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-6">&#182;</a>               </div>               <p>The identity of the current shove session</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">identity: </span><span class="o">-&gt;</span>
+    <span class="nx">@id</span></pre></div>             </td>           </tr>                               <tr id="section-7">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-7">&#182;</a>               </div>               <p>Toggle debugging
+<code>option</code> true or false</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">debug: </span><span class="nf">(option) -&gt;</span>
+    <span class="vi">@debugMode = </span><span class="nx">option</span> <span class="o">||</span> <span class="kc">true</span>
+    <span class="k">this</span></pre></div>             </td>           </tr>                               <tr id="section-8">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-8">&#182;</a>               </div>               <p>Send a message directly to another on the network
+<code>client</code> the client identity to send to
+<code>event</code> the event to trigger remotely
+<code>message</code> the event data</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">direct: </span><span class="nf">(client, event, message) -&gt;</span>
+    <span class="nx">@transport</span><span class="p">.</span><span class="nx">send</span><span class="p">({</span>
+      <span class="nv">event: </span><span class="nx">event</span><span class="p">,</span>
+      <span class="nv">to: </span><span class="nx">client</span><span class="p">,</span>
+      <span class="nv">data: </span><span class="nx">message</span>
+    <span class="p">})</span>
+    <span class="k">this</span>
+
+  <span class="nv">setAvailableNodes: </span><span class="nf">(nodes) -&gt;</span> <span class="nx">@transport</span><span class="p">.</span><span class="nx">updateHosts</span><span class="p">(</span><span class="nx">nodes</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-9">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-9">&#182;</a>               </div>               <p>Process a shove message</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">_process: </span><span class="nf">(e) -&gt;</span>
+    <span class="k">if</span> <span class="nx">e</span><span class="p">.</span><span class="nx">channel</span>
+      <span class="k">if</span> <span class="nx">@channels</span><span class="p">[</span><span class="nx">e</span><span class="p">.</span><span class="nx">channel</span><span class="p">]</span>
+        <span class="nx">@channels</span><span class="p">[</span><span class="nx">e</span><span class="p">.</span><span class="nx">channel</span><span class="p">].</span><span class="nx">process</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">event</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">data</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">from</span><span class="p">)</span>
+      <span class="k">else</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="nx">e</span><span class="p">.</span><span class="nx">event</span> <span class="o">==</span> <span class="s2">&quot;$error&quot;</span>
+      <span class="nx">@_dispatch</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">data</span><span class="p">)</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="nx">e</span><span class="p">.</span><span class="nx">event</span> <span class="o">==</span> <span class="s2">&quot;$identity&quot;</span>
+      <span class="vi">@id = </span><span class="nx">e</span><span class="p">.</span><span class="nx">data</span>
+      <span class="nx">@_dispatch</span><span class="p">(</span><span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="nx">@id</span><span class="p">)</span>
+    <span class="k">else</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;Unrecognized frame&quot;</span><span class="p">,</span> <span class="nx">e</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-10">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-10">&#182;</a>               </div>               <p>Dispatch event to listeners</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">_dispatch: </span><span class="nf">(event, args...) -&gt;</span>
+    <span class="k">if</span> <span class="nx">@events</span><span class="p">[</span><span class="nx">event</span><span class="p">]</span>
+      <span class="k">for</span> <span class="nx">callback</span> <span class="k">in</span> <span class="nx">@events</span><span class="p">[</span><span class="nx">event</span><span class="p">]</span>
+        <span class="nx">callback</span><span class="p">.</span><span class="nx">apply</span><span class="p">(</span><span class="nb">window</span><span class="p">,</span> <span class="nx">args</span><span class="p">)</span>
+    <span class="k">this</span>
+  
+  <span class="nv">_reconnect: </span><span class="nf">() -&gt;</span>
+    <span class="k">for</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">channel</span> <span class="k">of</span> <span class="nx">@channels</span>
+      <span class="nx">channel</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">()</span>
+    <span class="nx">@_dispatch</span><span class="p">(</span><span class="s2">&quot;reconnect&quot;</span><span class="p">)</span>
+        </pre></div>             </td>           </tr>                               <tr id="section-11">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-11">&#182;</a>               </div>               <p>Create the global Shove object</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nb">window</span><span class="p">.</span><span class="nv">Shove = </span><span class="k">new</span> <span class="nx">Client</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+  <span class="nx">$</span><span class="p">(</span><span class="nf">() -&gt;</span> <span class="nv">$.shove = </span><span class="nb">window</span><span class="p">.</span><span class="nx">Shove</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-12">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-12">&#182;</a>               </div>               <p>Add console for browsers that suck</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="p">(</span><span class="nf">() -&gt;</span>
+  <span class="nv">console = </span><span class="nb">window</span><span class="p">.</span><span class="nx">console</span>
+  <span class="nx">unless</span> <span class="nx">console</span> <span class="o">&amp;&amp;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span> <span class="o">&amp;&amp;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">error</span>
+    <span class="nv">console =</span>
+      <span class="nv">log: </span><span class="o">-&gt;</span>
+      <span class="nv">error: </span><span class="o">-&gt;</span>
+<span class="p">)()</span>
+
+</pre></div>             </td>           </tr>                </tbody>     </table>   </div> </body> </html> 

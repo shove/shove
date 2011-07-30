@@ -1,0 +1,74 @@
+<!DOCTYPE html>  <html> <head>   <title>websocket.coffee</title>   <meta http-equiv="content-type" content="text/html; charset=UTF-8">   <link rel="stylesheet" media="all" href="docco.css" /> </head> <body>   <div id="container">     <div id="background"></div>            <div id="jump_to">         Jump To &hellip;         <div id="jump_wrapper">           <div id="jump_page">                                           <a class="source" href="channel.html">                 channel.coffee               </a>                                           <a class="source" href="shove.html">                 shove.coffee               </a>                                           <a class="source" href="transport.html">                 transport.coffee               </a>                                           <a class="source" href="websocket.html">                 websocket.coffee               </a>                        </div>         </div>       </div>          <table cellpadding="0" cellspacing="0">       <thead>         <tr>           <th class="docs">             <h1>               websocket.coffee             </h1>           </th>           <th class="code">           </th>         </tr>       </thead>       <tbody>                               <tr id="section-1">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-1">&#182;</a>               </div>               <p>Copyright (C) 2011 by Dan Simpson
+Usage restrictions provided with the MIT License
+http://en.wikipedia.org/wiki/MIT_License</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="p">(</span><span class="nf">() -&gt;</span>
+  <span class="nx">unless</span> <span class="nb">window</span><span class="p">.</span><span class="nx">WebSocket</span>
+    <span class="nb">document</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="s2">&quot;&lt;div id=\&quot;wsproxy\&quot;&gt;Loading&lt;/div&gt;&quot;</span><span class="p">)</span>
+
+    <span class="nx">unless</span> <span class="nx">swfobject</span><span class="p">.</span><span class="nx">hasFlashPlayerVersion</span><span class="p">(</span><span class="s2">&quot;9.0.0&quot;</span><span class="p">)</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;Flash Player &gt;= 9.0.0 is required.&quot;</span><span class="p">)</span>
+      <span class="k">return</span>
+
+    <span class="k">if</span> <span class="nx">location</span><span class="p">.</span><span class="nx">protocol</span> <span class="o">==</span> <span class="s2">&quot;file:&quot;</span>
+      <span class="nv">err = </span><span class="s2">&quot;HEYHEYHEY: shove flash fallback does NOT work in file:///... URL</span>
+<span class="s2">      unless you set Flash Security Settings properly.  </span>
+<span class="s2">      Open the page via Web server i.e. http://...&quot;</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+  
+    <span class="nv">WebSocketProxy =</span>
+      <span class="nv">queue: </span><span class="p">[]</span>
+      <span class="nv">proxy: </span><span class="kc">null</span>
+      <span class="nv">socket: </span><span class="kc">null</span>
+    
+      <span class="nv">ready: </span><span class="o">-&gt;</span>
+        <span class="vi">@proxy = </span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;wsproxy&quot;</span><span class="p">)</span>
+        <span class="k">while</span> <span class="k">this</span><span class="p">.</span><span class="nx">queue</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+          <span class="nx">@queue</span><span class="p">.</span><span class="nx">shift</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="k">this</span><span class="p">)</span>
+        <span class="k">this</span>
+      
+      <span class="nv">onload: </span><span class="nf">(msg) -&gt;</span>
+        <span class="k">if</span> <span class="nx">console</span> <span class="o">&amp;&amp;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span>
+           <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">msg</span><span class="p">)</span>
+        <span class="k">this</span>
+      
+      <span class="nv">register: </span><span class="nf">(socket) -&gt;</span>
+        <span class="k">if</span> <span class="nx">@proxy</span> <span class="o">==</span> <span class="kc">null</span>
+          <span class="nx">@queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">@register</span><span class="p">(</span><span class="nx">socket</span><span class="p">))</span>         
+        <span class="k">else</span>
+          <span class="vi">@socket = </span><span class="nx">socket</span><span class="p">;</span>
+          <span class="nx">@proxy</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="nx">socket</span><span class="p">.</span><span class="nx">uri</span><span class="p">)</span>
+        <span class="k">this</span>
+
+      <span class="nv">send: </span><span class="nf">(data) -&gt;</span>
+        <span class="k">if</span> <span class="nx">@proxy</span> <span class="o">==</span> <span class="kc">null</span>
+          <span class="nx">@queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">@send</span><span class="p">(</span><span class="nx">data</span><span class="p">))</span>
+        <span class="k">else</span>
+          <span class="nx">@proxy</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span>
+        <span class="k">this</span>
+
+      <span class="nv">onopen: </span><span class="o">-&gt;</span>
+        <span class="nx">@socket</span><span class="p">.</span><span class="nx">onopen</span><span class="p">({})</span>
+        <span class="k">this</span>
+
+      <span class="nv">onmessage: </span><span class="nf">(data) -&gt;</span>
+        <span class="nx">@socket</span><span class="p">.</span><span class="nx">onmessage</span><span class="p">({</span><span class="nx">data</span><span class="o">:</span><span class="nx">data</span><span class="p">})</span>
+        <span class="k">this</span>
+
+      <span class="nv">onclose: </span><span class="o">-&gt;</span>
+        <span class="nx">@socket</span><span class="p">.</span><span class="nx">onclose</span><span class="p">({})</span>
+        <span class="k">this</span>
+ 
+    <span class="k">class</span> <span class="nx">WebSocket</span>
+      <span class="nv">constructor: </span><span class="nf">(@uri) -&gt;</span>
+        <span class="nx">WebSocketProxy</span><span class="p">.</span><span class="nx">register</span><span class="p">(</span><span class="k">this</span><span class="p">)</span>
+  
+      <span class="nv">send: </span><span class="nf">(data) -&gt;</span> <span class="nx">WebSocketProxy</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span>
+
+    <span class="nx">swfobject</span><span class="p">.</span><span class="nx">embedSWF</span><span class="p">(</span><span class="s2">&quot;http://static-dev.shove.io/proxy.swf&quot;</span><span class="p">,</span> <span class="s2">&quot;wsproxy&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;9.0.0&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="p">{</span>  
+    <span class="p">},{</span>
+      <span class="nv">allowscriptaccess: </span><span class="s2">&quot;always&quot;</span><span class="p">,</span>
+      <span class="nv">allownetworking: </span><span class="s2">&quot;all&quot;</span>
+    <span class="p">})</span>
+
+<span class="p">)()</span>
+
+</pre></div>             </td>           </tr>                </tbody>     </table>   </div> </body> </html> 
