@@ -183,7 +183,7 @@ class WebSocketTransport extends Transport
        
     @dispatch("connecting")
     @socket = new WebSocket(
-      "#{if @secure then "wss" else "ws"}://ws-#{@host()}.shove.io/#{@network}")
+      "#{if @secure then "wss" else "ws"}://#{@host()}.shove.io/#{@network}")
     @socket.onclose = => @disconnected()
     @socket.onmessage = (e) => @process(e)
     @socket.onopen = => @connected()

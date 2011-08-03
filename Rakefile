@@ -25,8 +25,7 @@ task :deploy do
   js = File.open(target).read
   
   # minified for production only!
-  js.gsub! "[\"dev\"]", "[_production_hosts_]"
-  js.gsub! "static-dev.shove.io", "static.shove.io"
+  js.gsub! "static-dev.shove.io:8888/lib", "static.shove.io"
   js.gsub! "api-dev.shove.io:4000", "api.shove.io"
     
   jsc = YUICompressor.compress_js(js, :munge => true)

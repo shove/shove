@@ -65,7 +65,7 @@
   
       send: (data) -> WebSocketProxy.send(data)
 
-    swfobject.embedSWF("http://static-dev.shove.io/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {  
+    swfobject.embedSWF("http://static-dev.shove.io:8888/lib/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {  
     },{
       allowscriptaccess: "always",
       allownetworking: "all"
