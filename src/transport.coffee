@@ -10,6 +10,7 @@ transportEvents = [
   "reconnect"
   "error"
   "statechange"
+  "hostlookup"
 ]
 
 # Script tag helpers

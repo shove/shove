@@ -23,15 +23,15 @@
     
       ready: ->
         @proxy = document.getElementById("wsproxy")
-        while this.queue.length > 0
+        while @queue.length > 0
           @queue.shift.call(this)
         this
       
-      onload: (msg) ->
-        if console && console.log
+      onlog: (msg) ->
+        if window.console && console.log
            console.log(msg)
         this
-      
+        
       register: (socket) ->
         if @proxy == null
           @queue.push(() => @register(socket))         
@@ -46,7 +46,10 @@
         else
           @proxy.send(data)
         this
-
+      close: ->
+        @proxy.close()
+        this
+        
       onopen: ->
         @socket.onopen({})
         this
@@ -64,11 +67,19 @@
         WebSocketProxy.register(this)
   
       send: (data) -> WebSocketProxy.send(data)
+      close: () -> WebSocketProxy.close()
+      onmessage: (e) ->
+      onclose: (e) ->
+      onopen: (e) ->
 
-    swfobject.embedSWF("http://static-dev.shove.io:8888/lib/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {  
-    },{
-      allowscriptaccess: "always",
+    # Scope is good
+    window.WebSocketProxy = WebSocketProxy
+    window.WebSocket = WebSocket
+    
+    attrs =
+      allowscriptaccess: "always"
       allownetworking: "all"
-    })
+
+    swfobject.embedSWF("http://static-dev.shove.io:8888/lib/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {}, attrs)
 
 )()

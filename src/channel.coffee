@@ -72,6 +72,7 @@ class Channel
       event: "$unsubscribe",
       channel: @name
     })
+    @subscribed = false
 
   # Register this channel with shove
   subscribe: ->
@@ -79,6 +80,7 @@ class Channel
       event: "$subscribe",
   		channel: @name
     })
+    @subscribed = true
 
   
   # Add a message filter.  Message filters are called

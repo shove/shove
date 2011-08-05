@@ -6,7 +6,7 @@ require "jasmine"
 task :default => [:build]
 
 task :build do
-  system "coffee -o tmp --compile src/*.coffee"
+  system "coffee -o tmp --compile src/websocket.coffee src/*.coffee"
 end
 
 task :deploy do
@@ -20,7 +20,7 @@ task :deploy do
   target = "target/shove.js"
   target_compressed = "target/shove.min.js"
   
-  system "coffee --join #{target} --compile src/*.coffee"
+  system "coffee --join #{target} --compile src/websocket.coffee  src/*.coffee"
   
   js = File.open(target).read
   
