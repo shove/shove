@@ -150,7 +150,7 @@ describe("Shove", function() {
       });
       
       waitsFor(function() {
-        return messages.length > 0;
+        return messages.length == 2;
       }, "Channel broadcast failed", 100);
     });
     

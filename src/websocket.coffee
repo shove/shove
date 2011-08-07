@@ -23,10 +23,13 @@
     
       ready: ->
         @proxy = document.getElementById("wsproxy")
-        while @queue.length > 0
-          @queue.shift.call(this)
-        this
+        @flush()
       
+      flush: ->
+        while @queue.length > 0
+          @queue.shift().call(this)
+        this
+        
       onlog: (msg) ->
         if window.console && console.log
            console.log(msg)
