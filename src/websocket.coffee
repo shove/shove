@@ -4,6 +4,11 @@
 
 (() ->
   unless window.WebSocket
+  
+    if window.MozWebSocket
+      window.WebSocket = window.MozWebSocket
+      return
+  
     document.write("<div id=\"wsproxy\">Loading</div>")
 
     unless swfobject.hasFlashPlayerVersion("9.0.0")
