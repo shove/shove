@@ -3,6 +3,7 @@
 # http://en.wikipedia.org/wiki/MIT_License
 
 class Client
+  
   constructor: () ->
     @transport = null
     @url = null
@@ -16,7 +17,12 @@ class Client
 
   # Connect to a network
   # `network` The name of the network
-  connect: (network) ->
+  connect: (network, opts) ->
+    
+    if opts?
+      for own key, val of opts
+        @[key] = val
+
     @network = network
     unless @transport && @transport.state == "CONNECTED"
       if window.WebSocket == undefined
