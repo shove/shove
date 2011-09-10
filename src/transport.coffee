@@ -133,34 +133,12 @@ class Transport
   # possibly bring down the internal binary protocol?
   # `msg` the encoded message to decode
   decode: (msg) ->
-    result = {}
-    len = msg.length
-    idx = 0
-    head = 0
-    tail = 0
-
-    while head < len
-      if msg[head] == "!"
-        if idx == 0
-          result.channel = msg.substring(tail, head)
-        else if idx == 1
-          result.event = msg.substring(tail, head)
-        else if idx == 2
-          result.to = msg.substring(tail, head)
-        else
-          result.from = msg.substring(tail, head)
-          result.data = msg.substring(head + 1, len)
-          break
-        idx++
-        tail = head + 1
-      head++
-    
-    result
+    JSON.parse(msg)
 
   # encode a shove message for the wire
   # `msg` the shove message object
   encode: (msg) ->
-    "#{msg.channel}!#{msg.event}!#{msg.to || ""}!!#{msg.data || ""}"
+    JSON.stringify(msg)
 
 #### WebSocketTransport
 

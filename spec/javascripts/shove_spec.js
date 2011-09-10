@@ -70,6 +70,20 @@ describe("Shove", function() {
       expect(m.event).toEqual("test");
       expect(m.data).toEqual("hey");
     });
+
+    it("should broadcast data to a channel", function() {
+      channel.broadcast("test", JSON.stringify({ funky: "of course" }));
+      waitsFor(function() {
+        return messages.length > 0;
+      }, "Channel broadcast failed", 100);
+    });
+
+    it("should receive a p2p data from self", function() {
+      var m = messages.pop();
+      expect(m.user).toEqual(Shove.identity());
+      expect(m.event).toEqual("test");
+      expect(m.data).toEqual(JSON.stringify({ funky: "of course" }));
+    });
     
     it("should broadcast multibyteto a channel", function() {
       channel.broadcast("test", "测试");

@@ -16,7 +16,7 @@
       return
 
     if location.protocol == "file:"
-      err = "HEYHEYHEY: shove flash fallback does NOT work in file:///... URL
+      err = "NOTICE: shove flash fallback does NOT work in file:///... URL
       unless you set Flash Security Settings properly.  
       Open the page via Web server i.e. http://..."
       console.error(err)
