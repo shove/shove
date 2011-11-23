@@ -91,6 +91,7 @@ class Transport
 
   # Dispatch an event to all bound callbacks
   dispatch: (event, args...) ->
+    log.debug(event, args)
     if @callbacks[event]
       for callback in @callbacks[event]
         callback.apply(window, args)

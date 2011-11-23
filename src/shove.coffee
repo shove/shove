@@ -11,7 +11,6 @@ class Client
     @network = null
     @events = {}
     @id = null
-    @debugMode = false
     @secure = false
   
 
@@ -66,8 +65,8 @@ class Client
 
   # Toggle debugging
   # `option` true or false
-  debug: (option) ->
-    @debugMode = option || true
+  debug: (fn) ->
+    log.callback = fn
     this
 
   # Send a message directly to another on the network

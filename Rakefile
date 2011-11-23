@@ -1,12 +1,25 @@
 require "yuicompressor"
 require "jasmine"
 
+def files
+  [
+    "src/log.coffee",
+    "src/websocket.coffee",
+    "src/transport.coffee",
+    "src/channel.coffee",
+    "src/shove.coffee"
+  ].join(" ")
+end
 
+def run cmd
+  puts cmd
+  system cmd
+end
 
 task :default => [:build]
 
 task :build do
-  system "coffee -o tmp --compile src/websocket.coffee src/*.coffee"
+  run "coffee -o tmp --compile #{files}"
 end
 
 task :deploy do
@@ -20,7 +33,7 @@ task :deploy do
   target = "target/shove.js"
   target_compressed = "target/shove.min.js"
   
-  system "coffee --join #{target} --compile src/websocket.coffee  src/*.coffee"
+  run "coffee --join #{target} --compile #{files}"
   
   js = File.open(target).read
   json2 = File.open("lib/json2.js").read
@@ -41,6 +54,10 @@ task :deploy do
     f.write "//Copyright 2011 Dan Simpson under the MIT License <http://www.opensource.org/licenses/mit-license.php>\n"
     f.write jsc
   end
+
+  system "cp lib/proxy.swf ~/shove/shove/app/config/static"
+  system "cp target/*.js ~/shove/shove/app/config/static"
+  system "cp target/*.js ~/shove/shove/app/target/shove-distribution/shove/config/static"
   
 end
 

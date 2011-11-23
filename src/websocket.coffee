@@ -88,6 +88,6 @@
       allowscriptaccess: "always"
       allownetworking: "all"
 
-    swfobject.embedSWF("http://static-dev.shove.io:8888/lib/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {}, attrs)
+    swfobject.embedSWF("http://static-dev.shove.io:8000/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {}, attrs)
 
 )()
