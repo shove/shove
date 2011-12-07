@@ -67,6 +67,10 @@ class Client
   # `option` true or false
   debug: (fn) ->
     log.callback = fn
+    @transport.send({
+      event: "debug",
+      channel: "$"
+    })
     this
 
   # Send a message directly to another on the network

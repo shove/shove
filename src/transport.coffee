@@ -8,6 +8,7 @@ transportEvents = [
   "disconnect"
   "message"
   "reconnect"
+  "reconnect"
   "error"
   "statechange"
   "hostlookup"
@@ -60,6 +61,7 @@ class Transport
   # disconnect
   # message
   # reconnect
+  # reconnecting
   # error
   # `cb` the callback to execute on event
   on: (event, cb) ->
@@ -120,8 +122,12 @@ class Transport
   disconnected: ->
     @state = "DISCONNECTED"
     @dispatch("disconnect")
+
+    closed = () =>
+      @connect()
+    
     unless @forcedc
-      setTimeout((=> @connect), 5000)
+      setTimeout(closed, 2000)
     this
     
   # Transmit data

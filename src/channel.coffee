@@ -59,7 +59,7 @@ class Channel
   # channel
   # `event` the event to broadcast
   # `message` the message to broadcast
-  broadcast: (event, message) ->
+  publish: (event, message) ->
     @transport.send({
       event: event,
       channel: @name,
@@ -69,16 +69,18 @@ class Channel
   # Unregister this channel with shove
   unsubscribe: ->
     @transport.send({
-      event: "$unsubscribe",
-      channel: @name
+      event: "unsubscribe",
+      channel: "$",
+      data: @name
     })
     @subscribed = false
 
   # Register this channel with shove
   subscribe: ->
     @transport.send({
-      event: "$subscribe",
-  		channel: @name
+      event: "subscribe",
+      channel: "$",
+      data: @name
     })
     @subscribed = true
 
