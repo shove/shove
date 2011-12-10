@@ -11,9 +11,15 @@ class Channel
       "*": []
     }
     @filters = []
+    @state = "unsubscribed"
     @subscribe()
 
-  
+  # Set the state for the channel
+  # `state` the state name
+  transition: (state) ->
+    @state = state
+    @process(state)
+
   # Bind a function to an event
   # The function will be called when
   # any message with event matching event
@@ -73,7 +79,6 @@ class Channel
       channel: "$",
       data: @name
     })
-    @subscribed = false
 
   # Register this channel with shove
   subscribe: ->
@@ -82,9 +87,7 @@ class Channel
       channel: "$",
       data: @name
     })
-    @subscribed = true
 
-  
   # Add a message filter.  Message filters are called
   # before any events propogate, so that you can apply
   # logic to every message on every channel.

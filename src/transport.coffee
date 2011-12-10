@@ -28,11 +28,11 @@ removeScript = (id) -> head.removeChild(document.getElementById(id))
 #### Transport
 
 # Base class for transporting data to
-# and from the shove network.
+# and from the shove app.
 # The transport layer also handles encoding
 # and decoding of the shove frames.
 class Transport
-  constructor: (@network, @secure) ->
+  constructor: (@app, @secure) ->
     @queue = []
     @state = "DISCONNECTED"
     @callbacks = {}
@@ -41,7 +41,7 @@ class Transport
     @hosts = null
   
   requestHosts: () ->
-    injectScript("hostlookup", "http://api-dev.shove.io:4000/#{@network}/nodes") 
+    injectScript("hostlookup", "http://api-dev.shove.io:4000/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")
@@ -49,7 +49,7 @@ class Transport
       @hosts = hosts
       @connect()
     else
-      @dispatch("error", "No hosts found for network #{@network}")
+      @dispatch("error", "No hosts found for app #{@app}")
     
   host: ->
     @hosts[@connections % @hosts.length]
@@ -101,6 +101,7 @@ class Transport
           
   # Process the message event
   process: (msg) ->
+    console.log(msg.data);
     @dispatch("message", @decode(msg.data))
   
   # Connected handler
@@ -152,8 +153,8 @@ class Transport
 # Transport that utilizes native WebSockets or
 # a custom version of Flash WebSockets
 class WebSocketTransport extends Transport
-  constructor: (network, secure) ->
-    super(network, secure)
+  constructor: (app, secure) ->
+    super(app, secure)
 
   # Override
   connect: ->
@@ -169,7 +170,7 @@ class WebSocketTransport extends Transport
        
     @dispatch("connecting")
     @socket = new WebSocket(
-      "#{if @secure then "wss" else "ws"}://#{@host()}.shove.io/#{@network}")
+      "#{if @secure then "wss" else "ws"}://#{@host()}.shove.io/#{@app}")
     @socket.onclose = => @disconnected()
     @socket.onmessage = (e) => @process(e)
     @socket.onopen = => @connected()
@@ -190,8 +191,8 @@ class WebSocketTransport extends Transport
 # Transport that utilizes JSONP Comet for
 # clients that do not support WebSockets  
 class CometTransport extends Transport
-  constructor: (network, secure) ->
-    super(network, secure)
+  constructor: (app, secure) ->
+    super(app, secure)
     @seed = 1
     @started = null
     @requesting = false
@@ -200,7 +201,7 @@ class CometTransport extends Transport
     window["_scb"] = (event) => @onLoad(event)
 
   connect: ->
-    @url = "#{if @secure then "https" else "http"}://poll-#{@host()}.shove.io/#{@network}"
+    @url = "#{if @secure then "https" else "http"}://poll-#{@host()}.shove.io/#{@app}"
     @request()
 
   request: (data) ->

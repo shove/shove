@@ -8,12 +8,12 @@
     if window.MozWebSocket
       window.WebSocket = window.MozWebSocket
       return
-  
-    document.write("<div id=\"wsproxy\">Loading</div>")
 
     unless swfobject.hasFlashPlayerVersion("9.0.0")
       console.error("Flash Player >= 9.0.0 is required.")
       return
+
+    document.write("<div id=\"wsproxy\">Loading</div>")
 
     if location.protocol == "file:"
       err = "NOTICE: shove flash fallback does NOT work in file:///... URL
@@ -86,7 +86,7 @@
     
     attrs =
       allowscriptaccess: "always"
-      allownetworking: "all"
+      allowapping: "all"
 
     swfobject.embedSWF("http://static-dev.shove.io:8000/proxy.swf", "wsproxy", "1", "1", "9.0.0", "", {}, attrs)
 

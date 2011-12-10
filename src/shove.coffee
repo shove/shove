@@ -8,26 +8,27 @@ class Client
     @transport = null
     @url = null
     @channels = {}
-    @network = null
+    @app = null
     @events = {}
     @id = null
     @secure = false
+    @authorized = true
   
 
-  # Connect to a network
-  # `network` The name of the network
-  connect: (network, opts) ->
+  # Connect to a app
+  # `app` The name of the app
+  connect: (app, opts) ->
     
     if opts?
       for own key, val of opts
         @[key] = val
 
-    @network = network
+    @app = app
     unless @transport && @transport.state == "CONNECTED"
       if window.WebSocket == undefined
-        @transport = new CometTransport(@network, @secure)
+        @transport = new CometTransport(@app, @secure)
       else	  
-        @transport = new WebSocketTransport(@network, @secure)
+        @transport = new WebSocketTransport(@app, @secure)
       @transport.on("message", () => @_process.apply(this, arguments))
       @transport.on("connect", () => @_dispatch("connect"))
       @transport.on("connecting", () => @_dispatch("connecting"))
@@ -36,12 +37,12 @@ class Client
       @transport.connect();
     this
        
-  # Disconnect from current network
+  # Disconnect from current app
   disconnect: ->
     @transport.disconnect()
     this
 
-  # Return a channel object for a given network
+  # Return a channel object for a given app
   # and subscribe to it on the remote host if not
   # currently subscribed
   # `name` The name of the channel
@@ -50,7 +51,7 @@ class Client
       @channels[name] = new Channel(name, @transport)
     @channels[name]
 
-  # Add a network event listener
+  # Add a app event listener
   # `event` The name of the event
   # `cb` The callback function to call
   on: (event, cb) ->
@@ -73,7 +74,7 @@ class Client
     })
     this
 
-  # Send a message directly to another on the network
+  # Send a message directly to another on the app
   # `client` the client identity to send to
   # `event` the event to trigger remotely
   # `message` the event data
@@ -85,19 +86,29 @@ class Client
     })
     this
 
+  authorize: (key) ->
+    @transport.send({
+      channel: "$",
+      event: "authorize",
+      data: key
+    })
+    this   
+
   setAvailableNodes: (nodes) -> @transport.updateHosts(nodes)
 
   # Process a shove message
   _process: (e) ->
     if e.channel
+      if e.channel == "$"
+        switch e.event
+          when "identity" then @id = e.data
+          when "subscribed" then @channels[e.data].transition("subscribed")
+          when "unsubscribed" then @channels[e.data].transition("unsubscribed")
+          when "subscribe_unauthorized" then @channels[e.data].transition("unauthorized")
+          when "authorized" then @authorized = true
+        @_dispatch(e.event, e.data)
       if @channels[e.channel]
         @channels[e.channel].process(e.event, e.data, e.from)
-      else
-    else if e.event == "$error"
-      @_dispatch("error", e.data)
-    else if e.event == "$identity"
-      @id = e.data
-      @_dispatch("identity", @id)
     else
       console.error("Unrecognized frame", e)
 

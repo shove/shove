@@ -3,7 +3,7 @@ describe("Shove", function() {
   var _connected = false, _connecting = false;
     
   describe("connection", function() {
-
+  
     Shove.on("connecting", function() {
       _connecting = true;
     }).on("connect", function() {
@@ -35,17 +35,27 @@ describe("Shove", function() {
   });
 
 
-  describe("p2p channel", function() {
+  describe("publisher", function() {
     var channel;
     var messages = [];
     
+    it("should authorize", function() {
+      // authorize admin
+      Shove.authorize("test");
+
+      waitsFor(function() {
+        return Shove.authorized;
+      }, "App authorization failed", 100);
+    });
+
     it("should subscribe to a channel", function() {
-      channel = Shove.channel("p2p:test").on("*", function(e) {
+
+      channel = Shove.channel("publish").on("*", function(e) {
         messages.push(e);
       });
 
       waitsFor(function() {
-        return messages.length > 0;
+        return channel.state == "subscribed";
       }, "Channel subscription failed", 100);
     });
 
@@ -54,14 +64,14 @@ describe("Shove", function() {
     });
 
     it("should receive a subscription event", function() {
-      expect(messages.pop().event).toEqual("$subscribed");
+      expect(messages.pop().event).toEqual("subscribed");
     });
 
-    it("should broadcast to a channel", function() {
-      channel.broadcast("test", "hey");
+    it("should publish to a channel", function() {
+      channel.publish("test", "hey");
       waitsFor(function() {
         return messages.length > 0;
-      }, "Channel broadcast failed", 100);
+      }, "Channel publish failed", 200);
     });
 
     it("should receive a p2p msg from self", function() {
@@ -71,25 +81,25 @@ describe("Shove", function() {
       expect(m.data).toEqual("hey");
     });
 
-    it("should broadcast data to a channel", function() {
-      channel.broadcast("test", JSON.stringify({ funky: "of course" }));
+    it("should publish data to a channel", function() {
+      channel.publish("test", JSON.stringify({ funky: "of course" }));
       waitsFor(function() {
         return messages.length > 0;
-      }, "Channel broadcast failed", 100);
+      }, "Channel publish failed", 100);
     });
 
-    it("should receive a p2p data from self", function() {
+    it("should receive data from self", function() {
       var m = messages.pop();
       expect(m.user).toEqual(Shove.identity());
       expect(m.event).toEqual("test");
       expect(m.data).toEqual(JSON.stringify({ funky: "of course" }));
     });
     
-    it("should broadcast multibyteto a channel", function() {
-      channel.broadcast("test", "测试");
+    it("should publish multibyteto a channel", function() {
+      channel.publish("test", "测试");
       waitsFor(function() {
         return messages.length > 0;
-      }, "Channel broadcast failed", 100);
+      }, "Channel publish failed", 100);
     });
     
     it("should handle multibyte chars", function() {
@@ -100,15 +110,11 @@ describe("Shove", function() {
     it("should unsubscribe", function() {
       channel.unsubscribe();
       waitsFor(function() {
-        return !channel.subscribed;
+        return channel.state == "unsubscribed";
       }, "Channel unsubscribe failed", 100);
       runs(function() {
-        channel.broadcast("test", "bye");
+        channel.publish("test", "bye");
       });
-    });
-
-    it("should not receive messages for an unsubscribed channel", function() {
-      expect(messages.length).toEqual(0);
     });
     
   });
@@ -116,34 +122,25 @@ describe("Shove", function() {
   
   describe("private channel", function() {
     var channel;
-    var messages = [];
-    var _wait = false;
+    var unauthorized = false;
     
     it("should receive a unauthorized event on a private channel", function() {
-      channel = Shove.channel("private:test").on("*", function(e) {
-        messages.push(e);
+      channel = Shove.channel("private:test").on("unauthorized", function(e) {
+        unauthorized = true;
       });
 
-      channel.on("$unauthorized", function() {
-        _wait = true;
-      });
-      
       waitsFor(function() {
-        return _wait;
+        return channel.state == "unauthorized";
       }, "Channel subscription failed", 100);
     
     });
     
-    it("should have a message", function() {
-      expect(messages.length).toEqual(1)
-    });
-    
     it("should receive a unauthorized event", function() {
-      expect(messages.pop().event).toEqual("$unauthorized");
+      expect(channel.state).toEqual("unauthorized");
     });
 
     it("should trigger a unauthorized event", function() {
-      expect(_wait).toEqual(true);
+      expect(unauthorized).toEqual(true);
     });
     
   });
@@ -159,7 +156,7 @@ describe("Shove", function() {
         messages.push(e);
       });
       
-      channel.on("$presence", function() {
+      channel.on("presence", function() {
         _presence = true;
       });
       
@@ -174,8 +171,8 @@ describe("Shove", function() {
     });
     
     it("should receive subscribed and presence event", function() {
-      expect(messages.shift().event).toEqual("$subscribed");
-      expect(messages.shift().event).toEqual("$presence");
+      expect(messages.shift().event).toEqual("subscribed");
+      expect(messages.shift().event).toEqual("presence");
     });
 
     it("should trigger a presence event", function() {

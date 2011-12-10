@@ -55,9 +55,9 @@ task :deploy do
     f.write jsc
   end
 
-  system "cp lib/proxy.swf ~/shove/shove/app/config/static"
-  system "cp target/*.js ~/shove/shove/app/config/static"
-  system "cp target/*.js ~/shove/shove/app/target/shove-distribution/shove/config/static"
+  system "cp lib/proxy.swf ~/shove/shove/config/static"
+  system "cp target/*.js ~/shove/shove/config/static"
+  system "cp target/*.js ~/shove/shove/target/shove-distribution/shove/config/static"
   
 end
 
