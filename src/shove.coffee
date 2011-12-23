@@ -2,6 +2,40 @@
 # Usage restrictions provided with the MIT License
 # http://en.wikipedia.org/wiki/MIT_License
 
+
+ERROR = 0
+
+# App ops 1-20
+DEBUG = 1
+PERMIT_CONNECT = 2
+PERMIT_DEBUG = 3
+
+# Channel ops 21-40
+PUBLISH = 21
+PUBLISH_PERMITTED = 22
+SUBSCRIBE = 23
+UNSUBSCRIBE = 24
+PERMIT_PUBLISH = 25
+PERMIT_SUBSCRIBE = 26
+PRESENCE_SUBSCRIBE = 27
+PRESENCE_UNSUBSCRIBE = 28
+PRESENCE_LIST = 29
+
+# Subscriber ops 41-60
+SET_IDENTITY = 41
+PUBLISH_DENIED = 42
+SUBSCRIBE_COMPLETE = 43
+SUBSCRIBE_DENIED = 44
+UNSUBSCRIBE_COMPLETE = 45
+DEBUG_DENIED = 46
+DEBUG_PERMITTED = 47
+CONNECT_DENIED = 48
+CONNECT_PERMITTED = 49
+DIRECT = 50
+DIRECT_DENIED = 51
+DIRECT_PERMITTED = 52
+PERMIT_ADMIN = 53
+
 class Client
   
   constructor: () ->
@@ -69,8 +103,7 @@ class Client
   debug: (fn) ->
     log.callback = fn
     @transport.send({
-      event: "debug",
-      channel: "$"
+      opcode: DEBUG
     })
     this
 
@@ -86,31 +119,32 @@ class Client
     })
     this
 
-  authorize: (key) ->
+  setPublisherKey: (key) ->
     @transport.send({
-      channel: "$",
-      event: "authorize",
+      opcode: PERMIT_ADMIN,
       data: key
     })
-    this   
+    this
 
   setAvailableNodes: (nodes) -> @transport.updateHosts(nodes)
 
   # Process a shove message
   _process: (e) ->
-    if e.channel
-      if e.channel == "$"
-        switch e.event
-          when "identity" then @id = e.data
-          when "subscribed" then @channels[e.data].transition("subscribed")
-          when "unsubscribed" then @channels[e.data].transition("unsubscribed")
-          when "subscribe_unauthorized" then @channels[e.data].transition("unauthorized")
-          when "authorized" then @authorized = true
-        @_dispatch(e.event, e.data)
-      if @channels[e.channel]
-        @channels[e.channel].process(e.event, e.data, e.from)
-    else
-      console.error("Unrecognized frame", e)
+    console.log(e)
+    chan = @channels[e.channel]
+    switch e.opcode
+      when SET_IDENTITY then @id = e.data
+      when SUBSCRIBE_COMPLETE then chan.transition("subscribed")
+      when UNSUBSCRIBE_COMPLETE then chan.transition("unsubscribed")
+      when SUBSCRIBE_DENIED then chan.transition("unauthorized")
+      when PRESENCE_SUBSCRIBE then chan.process("presence", "subscribe", e.from)
+      when PRESENCE_SUBSCRIBE then chan.process("presence", "unsubscribe", e.from)
+      when PUBLISH_PERMITTED then @authorized = true
+      when PUBLISH then chan.process(e.event, e.data, e.from)
+      when ERROR then 
+      else
+        return
+    @_dispatch(e.event, e.data)
 
   # Dispatch event to listeners
   _dispatch: (event, args...) ->

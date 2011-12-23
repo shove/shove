@@ -67,6 +67,7 @@ class Channel
   # `message` the message to broadcast
   publish: (event, message) ->
     @transport.send({
+      opcode: PUBLISH,
       event: event,
       channel: @name,
       data: message
@@ -75,17 +76,15 @@ class Channel
   # Unregister this channel with shove
   unsubscribe: ->
     @transport.send({
-      event: "unsubscribe",
-      channel: "$",
-      data: @name
+      opcode: UNSUBSCRIBE,
+      channel: @name
     })
 
   # Register this channel with shove
   subscribe: ->
     @transport.send({
-      event: "subscribe",
-      channel: "$",
-      data: @name
+      opcode: SUBSCRIBE,
+      channel: @name
     })
 
   # Add a message filter.  Message filters are called

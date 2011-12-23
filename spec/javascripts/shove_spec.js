@@ -41,7 +41,7 @@ describe("Shove", function() {
     
     it("should authorize", function() {
       // authorize admin
-      Shove.authorize("test");
+      Shove.setPublisherKey("test");
 
       waitsFor(function() {
         return Shove.authorized;

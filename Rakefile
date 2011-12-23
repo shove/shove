@@ -1,64 +1,154 @@
+require "rubygems"
 require "yuicompressor"
 require "jasmine"
+require "yaml"
+require "right_aws"
 
-def files
-  [
-    "src/log.coffee",
-    "src/websocket.coffee",
-    "src/transport.coffee",
-    "src/channel.coffee",
-    "src/shove.coffee"
-  ].join(" ")
+# S3 bucket
+BUCKET = "shove-cdn"
+
+# Config
+VERSION = "0.8"
+
+# Files to compile
+FILES = [
+  "src/log.coffee",
+  "src/websocket.coffee",
+  "src/transport.coffee",
+  "src/channel.coffee",
+  "src/shove.coffee"
+].join(" ")
+
+# Where we write compiled files
+OUT_DIR = File.dirname(__FILE__) + "/build"
+
+Log = Logger.new(STDOUT)
+
+# Get aws config
+def get_config
+  config = File.expand_path("~/.shove-aws.yml")
+
+  unless FileTest.exist?(config)
+
+    def getinput text
+      print text
+      STDIN.gets.strip
+    end
+
+    access = {}
+    access[:access_key_id] = getinput "Access Key Id: "
+    access[:secret_access_key] = getinput "Secret Access Key: "
+
+    File.open(config, "w") do |f|
+      f << access.to_yaml
+    end
+  end
+
+  YAML.load_file(config)
 end
 
-def run cmd
-  puts cmd
-  system cmd
+# S3 API
+def s3
+  config = get_config
+  @s3 ||= RightAws::S3Interface.new(config[:access_key_id], config[:secret_access_key])
 end
+
+# Cloudfront API
+def cf
+  config = get_config
+  @cf ||= RightAws::AcfInterface.new(config[:access_key_id], config[:secret_access_key])
+end
+
+# Publish content to S3
+def publish name, content, headers
+  result = s3.put(BUCKET, name, content, headers)
+  if result
+    Log.info "Deployed #{name} successful"
+  end
+end
+
+# Invalidate the Cloudfront cache
+def invalidate files
+  result = cf.create_invalidation("E8HK41AEIJZNG", :path => files)
+  if result
+    Log.info  "Invalidated #{files.join(", ")}"
+  end
+end
+
 
 task :default => [:build]
 
-task :build do
-  run "coffee -o tmp --compile #{files}"
+desc "Compile coffeescript to js"
+task :compile do
+  run "coffee -o tmp --compile #{FILES}"
 end
 
-task :deploy do
+desc "Build the js file for production"
+task :build do
 
-  puts "Compiling and compressing javascripts..."
+  Log.info "Compiling to javascript..."
   
-  unless Dir.exists?("target")
-    Dir.mkdir("target")
+  unless Dir.exists?(OUT_DIR)
+    Dir.mkdir(OUT_DIR)
   end
   
-  target = "target/shove.js"
-  target_compressed = "target/shove.min.js"
+  target = "#{OUT_DIR}/shove.js"
+  target_compressed = "#{OUT_DIR}/shove.min.js"
   
-  run "coffee --join #{target} --compile #{files}"
+  system "coffee --join #{target} --compile #{FILES}"
   
-  js = File.open(target).read
-  json2 = File.open("lib/json2.js").read
-  
-  # minified for production only!
-  js.gsub! "static-dev.shove.io:8888/lib", "static.shove.io"
-  js.gsub! "api-dev.shove.io:4000", "api.shove.io"
-    
-  jsc = YUICompressor.compress_js(js, :munge => true)
+  Log.info "Compressing..."
 
-  puts "~#{((jsc.length.to_f / js.length.to_f) * 100).round}% compression ratio achieved."
+  # Clean up the links
+  js = File.open(target).read
+  js.gsub! "static-dev.shove.io:8888/lib", "cdn.shove.io"
+  js.gsub! "api-dev.shove.io:4000", "api.shove.io"   
+  js = YUICompressor.compress_js(js, :munge => true)
+
+  Log.info "Combining..."
   
   File.open(target_compressed, "w") do |f|
-    f.write File.open("lib/swfobject.js").read
-    f.write "\n"
-    f.write YUICompressor.compress_js(json2, :munge => true)
-    f.write "\n"
-    f.write "//Copyright 2011 Dan Simpson under the MIT License <http://www.opensource.org/licenses/mit-license.php>\n"
-    f.write jsc
+    ["lib/swfobject.min.js", "lib/json2.min.js"].each do |src|
+      f << File.open(src).read
+      f << "\n"
+    end
+    f << "//Shove v#{VERSION} Copyright 2011 Shove under the MIT License <http://www.opensource.org/licenses/mit-license.php>\n"
+    f << js
   end
 
-  system "cp lib/proxy.swf ~/shove/shove/config/static"
-  system "cp target/*.js ~/shove/shove/config/static"
-  system "cp target/*.js ~/shove/shove/target/shove-distribution/shove/config/static"
-  
+end
+
+desc "Publish the result javascript code to S3 and invalidate CF cache"
+task :publish => [:build] do
+
+  Log.info "Deploying to #{BUCKET}..."
+
+  content = File.open("#{OUT_DIR}/shove.min.js").read
+
+  headers = {
+    "Content-Type" => "text/javascript"
+  }
+
+  publish("shove.js", content, headers)
+  publish("shove-#{VERSION}.js", content, headers)
+
+  invalidate(["/shove.js", "/shove-#{VERSION}.js"])
+
+end
+
+desc "Publish flash fallback to S3 invalidate CF cache"
+task :publish_swf do
+
+  Log.info "Deploying flash fallback"
+
+  content = File.open(File.dirname(__FILE__) + "/lib/proxy.swf").read
+
+  publish("proxy.swf", content, {
+    "Content-Type" => "application/x-shockwave-flash"
+  })
+
+  invalidate(["/proxy.swf"])
+
 end
 
 load "jasmine/tasks/jasmine.rake"

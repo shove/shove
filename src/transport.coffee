@@ -41,7 +41,7 @@ class Transport
     @hosts = null
   
   requestHosts: () ->
-    injectScript("hostlookup", "http://api-dev.shove.io:4000/#{@app}/nodes") 
+    injectScript("hostlookup", "http://api-dev.shove.io:4000/apps/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")
@@ -83,6 +83,7 @@ class Transport
   # Send data on the transport
   # `data` - the data to send
   send: (data) ->
+    #console.log(data)
     unless @state == "CONNECTED"
       @queue.push(data)
     else
@@ -101,7 +102,6 @@ class Transport
           
   # Process the message event
   process: (msg) ->
-    console.log(msg.data);
     @dispatch("message", @decode(msg.data))
   
   # Connected handler
