@@ -159,7 +159,10 @@ task :autobuild do
   
   target = "#{OUT_DIR}/shove.js"
   
-  system "coffee -w -o #{OUT_DIR} -c #{FILES}"
+  loop do
+    system "coffee --join #{target} --compile #{FILES}"
+    sleep 1
+  end
 end
 
 desc "Publish the result javascript code to S3 and invalidate CF cache"
