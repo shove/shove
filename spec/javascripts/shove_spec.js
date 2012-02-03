@@ -1,10 +1,10 @@
-describe("Shove", function() {
+describe("$shove", function() {
 
   var _connected = false, _connecting = false;
     
   describe("connection", function() {
   
-    Shove.on("connecting", function() {
+    $shove.on("connecting", function() {
       _connecting = true;
     }).on("connect", function() {
       _connected = true;
@@ -13,14 +13,14 @@ describe("Shove", function() {
     });
         
     it("should connect", function() {
-      Shove.connect("test")
+      $shove.connect("test");
 
       waitsFor(function() {
-        return Shove.transport.state == "CONNECTED";
+        return $shove.socket.state == "CONNECTED";
       }, "Unable to connect", 1000);
       
       runs(function() {
-        expect(Shove.transport.state).toEqual("CONNECTED");
+        expect($shove.socket.state).toEqual("CONNECTED");
       });
     });
     
@@ -29,7 +29,7 @@ describe("Shove", function() {
     });
     
     it("should get an identity", function() {
-      expect(Shove.identity()).toMatch(/\w+/);
+      expect($shove.identity()).toMatch(/\w+/);
     });
     
   });
@@ -41,16 +41,16 @@ describe("Shove", function() {
     
     it("should authorize", function() {
       // authorize admin
-      Shove.setPublisherKey("test");
+      $shove.authorize("test");
 
       waitsFor(function() {
-        return Shove.authorized;
+        return $shove.authorized;
       }, "App authorization failed", 100);
     });
 
     it("should subscribe to a channel", function() {
 
-      channel = Shove.channel("publish").on("*", function(e) {
+      channel = $shove.channel("publish").on("*", function(e) {
         messages.push(e);
       });
 
@@ -76,7 +76,7 @@ describe("Shove", function() {
 
     it("should receive a p2p msg from self", function() {
       var m = messages.pop();
-      expect(m.user).toEqual(Shove.identity());
+      expect(m.user).toEqual($shove.identity());
       expect(m.event).toEqual("test");
       expect(m.data).toEqual("hey");
     });
@@ -90,7 +90,7 @@ describe("Shove", function() {
 
     it("should receive data from self", function() {
       var m = messages.pop();
-      expect(m.user).toEqual(Shove.identity());
+      expect(m.user).toEqual($shove.identity());
       expect(m.event).toEqual("test");
       expect(m.data).toEqual(JSON.stringify({ funky: "of course" }));
     });
@@ -125,7 +125,7 @@ describe("Shove", function() {
     var unauthorized = false;
     
     it("should receive a unauthorized event on a private channel", function() {
-      channel = Shove.channel("private:test").on("unauthorized", function(e) {
+      channel = $shove.channel("private:test").on("unauthorized", function(e) {
         unauthorized = true;
       });
 
@@ -152,7 +152,7 @@ describe("Shove", function() {
     
     it("should subscribe to a presence channel", function() {
 
-      channel = Shove.channel("presence:test").on("*", function(e) {
+      channel = $shove.channel("presence:test").on("*", function(e) {
         messages.push(e);
       });
       
@@ -184,16 +184,16 @@ describe("Shove", function() {
   describe("disconnect", function() {
     
     it("should disconnect, change state", function() {
-      Shove.disconnect();
+      $shove.disconnect();
 
       waitsFor(function() {
-        return Shove.transport.state == "DISCONNECTED";
+        return $shove.socket.state == "DISCONNECTED";
       }, "Unable to disconnect", 1000);
       
     });
         
     it("should disconnect", function() {
-      expect(Shove.transport.state).toEqual("DISCONNECTED");
+      expect($shove.socket.state).toEqual("DISCONNECTED");
     });
     
     it("should trigger a disconnect event", function() {

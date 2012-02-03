@@ -38,10 +38,10 @@ class Transport
     @callbacks = {}
     @connections = 0
     @forcedc = false
-    @hosts = null
+    @hosts = ["localhost:7001"]
   
   requestHosts: () ->
-    injectScript("hostlookup", "http://api-dev.shove.io:4000/apps/#{@app}/nodes") 
+    injectScript("hostlookup", "http://localhost:7000/apps/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")
@@ -94,7 +94,6 @@ class Transport
 
   # Dispatch an event to all bound callbacks
   dispatch: (event, args...) ->
-    log.debug(event, args)
     if @callbacks[event]
       for callback in @callbacks[event]
         callback.apply(window, args)
@@ -170,7 +169,7 @@ class WebSocketTransport extends Transport
        
     @dispatch("connecting")
     @socket = new WebSocket(
-      "#{if @secure then "wss" else "ws"}://#{@host()}.shove.io/#{@app}")
+      "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}")
     @socket.onclose = => @disconnected()
     @socket.onmessage = (e) => @process(e)
     @socket.onopen = => @connected()
@@ -184,66 +183,5 @@ class WebSocketTransport extends Transport
   # Override
   transmit: (frame) ->
     @socket.send(frame)
-
-
-#### CometTransport
-
-# Transport that utilizes JSONP Comet for
-# clients that do not support WebSockets  
-class CometTransport extends Transport
-  constructor: (app, secure) ->
-    super(app, secure)
-    @seed = 1
-    @started = null
-    @requesting = false
-    @timeout = 10000
-    @timer = null
-    window["_scb"] = (event) => @onLoad(event)
-
-  connect: ->
-    @url = "#{if @secure then "https" else "http"}://poll-#{@host()}.shove.io/#{@app}"
-    @request()
-
-  request: (data) ->
-    clearTimeout(@timer)
-    @timer = setTimeout((() => @onTimeout()), @timeout)
-    @addTag(@getUrl())
-
-  addTag: (url) -> injectScript("comet#{@seed}", url)
-
-  # remove the script tag from the dom
-  # to prevent possible memory leaks
-  # Note: does not stop the request on a unfinished request (some browsers?)
-  removeTag: -> removeScript("comet#{@seed++}")
-
-  # Get the request url, based on pending messages,
-  # randomness, and subscriber.
-  getUrl: ->
-    suffix = "/" + Math.random();
-    if @queue.length > 0
-      suffix += "/" + @queue.shift();
-    "#{@url}#{suffix}"
-
-  # Called by JSONP script
-  onLoad: (data) ->
-    if data == "connect"
-      @connected()
-    else
-      @process({
-        data: data
-      })
-
-    clearTimeout(@timer);
-    @timer = setTimeout((=> @request()), 20);
-
-  # Called by a timer (possibly remove?)
-  onTimeout: ->
-    @removeTag()
-    @request()
-
-  # Stop current request and send another
-  transmit: (message) ->
-    @removeTag()
-    @request(message)
 
 

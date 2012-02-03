@@ -8,11 +8,10 @@ class Channel
 
   constructor: (@name, @transport) ->
     @events = {
-      "*": []
+      "message": []
     }
     @filters = []
     @state = "unsubscribed"
-    @subscribe()
 
   # Set the state for the channel
   # `state` the state name
@@ -37,10 +36,9 @@ class Channel
   # `event` the event name
   # `message` the data package
   # `user` the user it's from
-  process: (event, message, user) ->
+  process: (message, user) ->
     e = {
-      event: event
-      data: message
+      data: message,
       user: user
     }
     
@@ -61,19 +59,18 @@ class Channel
     
     this
     
-  # Broadcast an event and message on this
+  # Publish an event and message on this
   # channel
   # `event` the event to broadcast
   # `message` the message to broadcast
-  publish: (event, message) ->
+  publish: (message) ->
     @transport.send({
       opcode: PUBLISH,
-      event: event,
       channel: @name,
       data: message
     })
 
-  # Unregister this channel with shove
+  # Unsubscribe from this channel
   unsubscribe: ->
     @transport.send({
       opcode: UNSUBSCRIBE,

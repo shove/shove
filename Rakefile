@@ -12,8 +12,6 @@ VERSION = "0.8"
 
 # Files to compile
 FILES = [
-  "src/log.coffee",
-  "src/websocket.coffee",
   "src/transport.coffee",
   "src/channel.coffee",
   "src/shove.coffee"
@@ -83,6 +81,39 @@ task :compile do
   run "coffee -o tmp --compile #{FILES}"
 end
 
+desc "Publish dev to S3"
+task :publish_dev do
+
+  Log.info "Compiling to javascript..."
+  
+  unless Dir.exists?(OUT_DIR)
+    Dir.mkdir(OUT_DIR)
+  end
+  
+  target = "#{OUT_DIR}/shove.js"
+  system "coffee --join #{target} --compile #{FILES}"
+  
+  Log.info "Combining..."
+  
+  content = ""
+  ["lib/swfobject.min.js", "lib/json2.min.js"].each do |src|
+    content << File.open(src).read
+    content << "\n"
+  end
+  content << File.open(target).read
+  
+  Log.info "Deploying to #{BUCKET}..."
+
+  headers = {
+    "Content-Type" => "text/javascript"
+  }
+
+  publish("shove.dev.js", content, headers)
+
+  invalidate(["/shove.dev.js"])
+
+end
+
 desc "Build the js file for production"
 task :build do
 
@@ -101,14 +132,14 @@ task :build do
 
   # Clean up the links
   js = File.open(target).read
-  js.gsub! "static-dev.shove.io:8888/lib", "cdn.shove.io"
-  js.gsub! "api-dev.shove.io:4000", "api.shove.io"   
+  js.gsub! "localhost:8888/lib", "cdn.shove.io"
+  js.gsub! "localhost:7000", "api.shove.io"   
   js = YUICompressor.compress_js(js, :munge => true)
 
   Log.info "Combining..."
   
   File.open(target_compressed, "w") do |f|
-    ["lib/swfobject.min.js", "lib/json2.min.js"].each do |src|
+    ["lib/swfobject.min.js", "lib/json2.min.js", "lib/websocket.js"].each do |src|
       f << File.open(src).read
       f << "\n"
     end

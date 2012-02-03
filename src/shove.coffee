@@ -2,53 +2,43 @@
 # Usage restrictions provided with the MIT License
 # http://en.wikipedia.org/wiki/MIT_License
 
-
-ERROR = 0
-
-# App ops 1-20
-DEBUG = 1
-PERMIT_CONNECT = 2
-PERMIT_DEBUG = 3
-
-# Channel ops 21-40
-PUBLISH = 21
-PUBLISH_PERMITTED = 22
-SUBSCRIBE = 23
-UNSUBSCRIBE = 24
-PERMIT_PUBLISH = 25
-PERMIT_SUBSCRIBE = 26
-PRESENCE_SUBSCRIBE = 27
-PRESENCE_UNSUBSCRIBE = 28
-PRESENCE_LIST = 29
-
-# Subscriber ops 41-60
-SET_IDENTITY = 41
-PUBLISH_DENIED = 42
-SUBSCRIBE_COMPLETE = 43
-SUBSCRIBE_DENIED = 44
-UNSUBSCRIBE_COMPLETE = 45
-DEBUG_DENIED = 46
-DEBUG_PERMITTED = 47
-CONNECT_DENIED = 48
-CONNECT_PERMITTED = 49
-DIRECT = 50
-DIRECT_DENIED = 51
-DIRECT_PERMITTED = 52
-PERMIT_ADMIN = 53
+ERROR = 0x7F
+CONNECT_COMPLETE = 0x00
+CONNECT_DENIED = 0x01
+SUBSCRIBE = 0x10 
+SUBSCRIBE_COMPLETE = 0x11
+SUBSCRIBE_DENIED = 0x12
+UNSUBSCRIBE = 0x13
+UNSUBSCRIBE_COMPLETE = 0x14
+PUBLISH = 0x20 
+PUBLISH_DENIED = 0x21
+PUBLISH_COMPLETE = 0x22
+ALLOW_PUBLISH = 0x30 
+ALLOW_SUBSCRIBE = 0x31
+ALLOW_CONNECT = 0x32
+ALLOW_LOG = 0x33
+DENY_PUBLISH = 0x40 
+DENY_SUBSCRIBE = 0x41
+DENY_CONNECT = 0x42
+DENY_LOG = 0x42
+LOG = 0x50 
+LOG_STARTED = 0x51
+LOG_DENIED = 0x52
+AUTHORIZE = 0x60
+AUTHORIZE_COMPLETE = 0x61
 
 class Client
   
   constructor: () ->
-    @transport = null
-    @url = null
-    @channels = {}
-    @app = null
-    @events = {}
     @id = null
+    @url = null
+    @app = null
     @secure = false
-    @authorized = true
-  
-
+    @socket = null
+    @listeners = {}
+    @channels = {}
+    @authorized = false
+    
   # Connect to a app
   # `app` The name of the app
   connect: (app, opts) ->
@@ -58,22 +48,21 @@ class Client
         @[key] = val
 
     @app = app
-    unless @transport && @transport.state == "CONNECTED"
-      if window.WebSocket == undefined
-        @transport = new CometTransport(@app, @secure)
-      else	  
-        @transport = new WebSocketTransport(@app, @secure)
-      @transport.on("message", () => @_process.apply(this, arguments))
-      @transport.on("connect", () => @_dispatch("connect"))
-      @transport.on("connecting", () => @_dispatch("connecting"))
-      @transport.on("reconnect", () => @_reconnect())
-      @transport.on("disconnect", () => @_dispatch("disconnect"))
-      @transport.connect();
-    this
+
+    unless @socket && @socket.state == "CONNECTED"
+      if window.WebSocket != undefined
+        @socket = new WebSocketTransport(@app, @secure)
+        @socket.on("message", () => @process.apply(this, arguments))
+        @socket.on("connect", () => @trigger("connect"))
+        @socket.on("connecting", () => @trigger("connecting"))
+        @socket.on("disconnect", () => @trigger("disconnect"))
+        @socket.on("reconnect", () => @onReconnect())
+        @socket.connect()
+      this
        
   # Disconnect from current app
-  disconnect: ->
-    @transport.disconnect()
+  disconnect: () ->
+    @socket.disconnect()
     this
 
   # Return a channel object for a given app
@@ -82,93 +71,83 @@ class Client
   # `name` The name of the channel
   channel: (name) ->
     unless @channels[name]
-      @channels[name] = new Channel(name, @transport)
+      @channels[name] = new Channel(name, @socket)
     @channels[name]
 
   # Add a app event listener
   # `event` The name of the event
   # `cb` The callback function to call
   on: (event, cb) ->
-    unless @events[event]
-      @events[event] = []
-    @events[event].push(cb)
+    unless @listeners[event]
+      @listeners[event] = []
+    @listeners[event].push(cb)
     this
 
   # The identity of the current shove session
-  identity: ->
+  identity: () ->
     @id
-
-  # Toggle debugging
-  # `option` true or false
-  debug: (fn) ->
-    log.callback = fn
-    @transport.send({
-      opcode: DEBUG
-    })
-    this
 
   # Send a message directly to another on the app
   # `client` the client identity to send to
   # `event` the event to trigger remotely
   # `message` the event data
-  direct: (client, event, message) ->
-    @transport.send({
-      event: event,
-      to: client,
+  publish: (channel, message) ->
+    @socket.send({
+      opcode: PUBLISH,
+      channel: channel,
       data: message
     })
     this
 
-  setPublisherKey: (key) ->
-    @transport.send({
-      opcode: PERMIT_ADMIN,
+  # Self authorize to permit all
+  # actions on the connection
+  # `key` the api key for the app
+  authorize: (key) ->
+    @socket.send({
+      opcode: AUTHORIZE,
+      channel: "*",
       data: key
     })
     this
 
-  setAvailableNodes: (nodes) -> @transport.updateHosts(nodes)
+  setHosts: (hosts) -> @socket.updateHosts(hosts)
 
   # Process a shove message
-  _process: (e) ->
-    console.log(e)
+  process: (e) ->
     chan = @channels[e.channel]
     switch e.opcode
-      when SET_IDENTITY then @id = e.data
+      when CONNECT_COMPLETE then @id = e.data
       when SUBSCRIBE_COMPLETE then chan.transition("subscribed")
       when UNSUBSCRIBE_COMPLETE then chan.transition("unsubscribed")
       when SUBSCRIBE_DENIED then chan.transition("unauthorized")
-      when PRESENCE_SUBSCRIBE then chan.process("presence", "subscribe", e.from)
-      when PRESENCE_SUBSCRIBE then chan.process("presence", "unsubscribe", e.from)
-      when PUBLISH_PERMITTED then @authorized = true
-      when PUBLISH then chan.process(e.event, e.data, e.from)
-      when ERROR then 
+      when PUBLISH then chan.process(e.data)
+      when AUTHORIZE_COMPLETE then @authorized = true
+      when ERROR then console.log(e.data)
       else
         return
-    @_dispatch(e.event, e.data)
+    @trigger(e.event, e.data)
 
   # Dispatch event to listeners
-  _dispatch: (event, args...) ->
-    if @events[event]
-      for callback in @events[event]
+  trigger: (event, args...) ->
+    if @listeners[event]
+      for callback in @listeners[event]
         callback.apply(window, args)
     this
   
-  _reconnect: () ->
+  onReconnect: () ->
     for name, channel of @channels
       channel.subscribe()
-    @_dispatch("reconnect")
+    @trigger("reconnect")
         
 # Create the global Shove object
-window.Shove = new Client()
+window.$shove = new Client()
 
 if window.jQuery
-  $(() -> $.shove = window.Shove)
+  $(() -> $.shove = window.$shove)
 
-# Add console for browsers that suck
 (() ->
-  console = window.console
-  unless console && console.log && console.error
-    console =
+  unless window.console && window.console.log
+    window.console =
       log: ->
       error: ->
 )()
