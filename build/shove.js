@@ -1,6 +1,7 @@
 (function() {
-  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, CONNECT_COMPLETE, CONNECT_DENIED, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE;
-  var __hasProp = Object.prototype.hasOwnProperty, __slice = Array.prototype.slice;
+  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, CONNECT_COMPLETE, CONNECT_DENIED, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE,
+    __hasProp = Object.prototype.hasOwnProperty,
+    __slice = Array.prototype.slice;
 
   ERROR = 0x7F;
 
@@ -64,8 +65,8 @@
     }
 
     Client.prototype.connect = function(app, opts) {
-      var key, val;
-      var _this = this;
+      var key, val,
+        _this = this;
       if (opts != null) {
         for (key in opts) {
           if (!__hasProp.call(opts, key)) continue;

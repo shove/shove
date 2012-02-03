@@ -1,8 +1,10 @@
 (function() {
-  var Transport, WebSocketTransport, head, injectScript, removeScript, transportEvents;
-  var __slice = Array.prototype.slice, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+  var Transport, WebSocketTransport, head, injectScript, removeScript, transportEvents,
+    __slice = Array.prototype.slice,
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-  transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "reconnect", "error", "statechange", "hostlookup"];
+  transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "error", "statechange", "hostlookup"];
 
   head = document.getElementsByTagName("head")[0];
 
@@ -108,8 +110,8 @@
     };
 
     Transport.prototype.disconnected = function() {
-      var closed;
-      var _this = this;
+      var closed,
+        _this = this;
       this.state = "DISCONNECTED";
       this.dispatch("disconnect");
       closed = function() {
@@ -135,9 +137,9 @@
 
   })();
 
-  WebSocketTransport = (function() {
+  WebSocketTransport = (function(_super) {
 
-    __extends(WebSocketTransport, Transport);
+    __extends(WebSocketTransport, _super);
 
     function WebSocketTransport(app, secure) {
       WebSocketTransport.__super__.constructor.call(this, app, secure);
@@ -176,6 +178,6 @@
 
     return WebSocketTransport;
 
-  })();
+  })(Transport);
 
 }).call(this);
