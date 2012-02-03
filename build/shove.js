@@ -1,13 +1,10 @@
 (function() {
-<<<<<<< HEAD
-  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, CONNECT_COMPLETE, CONNECT_DENIED, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE,
+  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT_COMPLETE, CONNECT_DENIED, Channel, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents,
+    __slice = Array.prototype.slice,
     __hasProp = Object.prototype.hasOwnProperty,
-    __slice = Array.prototype.slice;
-=======
-  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, CONNECT_COMPLETE, CONNECT_DENIED, Channel, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents;
-  var __slice = Array.prototype.slice, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-  transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "reconnect", "error", "statechange", "hostlookup"];
+  transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "error", "statechange", "hostlookup"];
 
   head = document.getElementsByTagName("head")[0];
 
@@ -113,8 +110,8 @@
     };
 
     Transport.prototype.disconnected = function() {
-      var closed;
-      var _this = this;
+      var closed,
+        _this = this;
       this.state = "DISCONNECTED";
       this.dispatch("disconnect");
       closed = function() {
@@ -140,9 +137,9 @@
 
   })();
 
-  WebSocketTransport = (function() {
+  WebSocketTransport = (function(_super) {
 
-    __extends(WebSocketTransport, Transport);
+    __extends(WebSocketTransport, _super);
 
     function WebSocketTransport(app, secure) {
       WebSocketTransport.__super__.constructor.call(this, app, secure);
@@ -181,7 +178,76 @@
 
     return WebSocketTransport;
 
-  })();
+  })(Transport);
+
+  MockTransport = (function(_super) {
+
+    __extends(MockTransport, _super);
+
+    function MockTransport(app, secure) {
+      MockTransport.__super__.constructor.call(this, app, secure);
+      this.hosts = [];
+    }
+
+    MockTransport.prototype.connect = function() {
+      var _this = this;
+      if (this.state === "CONNECTED") return;
+      this.dispatch("hostlookup");
+      this.dispatch("connecting");
+      this.socket = {};
+      this.socket.onclose = function() {
+        return _this.disconnected();
+      };
+      this.socket.onmessage = function(e) {
+        return _this.process(e);
+      };
+      this.socket.onopen = function() {
+        return _this.connected();
+      };
+      this.socket.send = function(frame) {
+        var response;
+        response = {
+          opcode: ERROR,
+          channel: frame.channel,
+          data: ""
+        };
+        switch (frame.opcode) {
+          case SUBSCRIBE:
+            response.opcode = SUBSCRIBE_COMPLETE;
+            break;
+          case UNSUBSCRIBE:
+            response.opcode = UNSUBSCRIBE_COMPLETE;
+            break;
+          case PUBLISH:
+            response = frame;
+            break;
+          case AUTHORIZE:
+            response.opcode = AUTHORIZE_COMPLETE;
+        }
+        _this.dispatch("message", response);
+        return _this;
+      };
+      this.forcedc = false;
+      this.socket.onopen();
+      return this.dispatch("message", {
+        opcode: CONNECT_COMPLETE,
+        channel: "",
+        data: 0
+      });
+    };
+
+    MockTransport.prototype.disconnect = function() {
+      this.forcedc = true;
+      return this.disconnected;
+    };
+
+    MockTransport.prototype.transmit = function(frame) {
+      return this.socket.send(frame);
+    };
+
+    return MockTransport;
+
+  })(Transport);
 
   Channel = (function() {
 
@@ -267,9 +333,8 @@
     return Channel;
 
   })();
->>>>>>> 498ab8ccf97617ca3e9bf0f1f9134ebe4e953fa4
 
-  ERROR = 0x7F;
+  ERROR = 0xFF;
 
   CONNECT_COMPLETE = 0x00;
 
@@ -317,6 +382,14 @@
 
   AUTHORIZE_COMPLETE = 0x61;
 
+  AUTHORIZE_DENIED = 0x62;
+
+  PRESENCE_SUBSCRIBED = 0x70;
+
+  PRESENCE_UNSUBSCRIBED = 0x71;
+
+  PRESENCE_LIST = 0x72;
+
   Client = (function() {
 
     function Client() {
@@ -343,7 +416,7 @@
       this.app = app;
       if (!(this.socket && this.socket.state === "CONNECTED")) {
         if (window.WebSocket !== void 0) {
-          this.socket = new WebSocketTransport(this.app, this.secure);
+          this.socket = new MockTransport(this.app, this.secure);
           this.socket.on("message", function() {
             return _this.process.apply(_this, arguments);
           });

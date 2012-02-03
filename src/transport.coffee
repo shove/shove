@@ -184,3 +184,62 @@ class WebSocketTransport extends Transport
     @socket.send(frame)
 
 
+#### MockTransport
+
+# Copy of WebSocketTransport with a mock server
+# for testing shove clients
+class MockTransport extends Transport
+  constructor: (app, secure) ->
+    super(app, secure)
+    @hosts = []
+
+  # Override
+  connect: ->
+    # skip if we are connected
+    if @state == "CONNECTED"
+      return
+
+    # do a host lookup
+    @dispatch("hostlookup")
+
+    @dispatch("connecting")
+    @socket = {}
+    @socket.onclose = => @disconnected()
+    @socket.onmessage = (e) => @process(e)
+    @socket.onopen = => @connected()
+    
+    @socket.send = (frame) =>
+      
+      response = {
+        opcode: ERROR
+        channel: frame.channel
+        data: ""
+      }
+      
+      switch frame.opcode
+        when SUBSCRIBE
+          response.opcode = SUBSCRIBE_COMPLETE
+        when UNSUBSCRIBE
+          response.opcode = UNSUBSCRIBE_COMPLETE
+        when PUBLISH
+          response = frame
+        when AUTHORIZE
+          response.opcode = AUTHORIZE_COMPLETE
+
+      @dispatch("message",response)
+      @
+
+    @forcedc = false
+    @socket.onopen()
+    @dispatch("message",{opcode:CONNECT_COMPLETE,channel:"",data:0})
+
+  # Override
+  disconnect: ->
+    @forcedc = true
+    @disconnected
+
+  # Override
+  transmit: (frame) ->
+    @socket.send(frame)
+
+

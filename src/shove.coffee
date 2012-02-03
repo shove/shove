@@ -2,30 +2,50 @@
 # Usage restrictions provided with the MIT License
 # http://en.wikipedia.org/wiki/MIT_License
 
-ERROR = 0x7F
+ERROR = 0xFF
+
+# Connection
 CONNECT_COMPLETE = 0x00
 CONNECT_DENIED = 0x01
+
+# Subscribe Ops
 SUBSCRIBE = 0x10 
 SUBSCRIBE_COMPLETE = 0x11
 SUBSCRIBE_DENIED = 0x12
 UNSUBSCRIBE = 0x13
 UNSUBSCRIBE_COMPLETE = 0x14
+
+# Publish Ops
 PUBLISH = 0x20 
 PUBLISH_DENIED = 0x21
 PUBLISH_COMPLETE = 0x22
+
+# Authorize Ops
 ALLOW_PUBLISH = 0x30 
 ALLOW_SUBSCRIBE = 0x31
 ALLOW_CONNECT = 0x32
 ALLOW_LOG = 0x33
+
+# Deny Ops
 DENY_PUBLISH = 0x40 
 DENY_SUBSCRIBE = 0x41
 DENY_CONNECT = 0x42
 DENY_LOG = 0x42
+
+# Log Ops
 LOG = 0x50 
 LOG_STARTED = 0x51
 LOG_DENIED = 0x52
+
+# Self authorize
 AUTHORIZE = 0x60
 AUTHORIZE_COMPLETE = 0x61
+AUTHORIZE_DENIED = 0x62
+  
+# Presence Ops
+PRESENCE_SUBSCRIBED = 0x70
+PRESENCE_UNSUBSCRIBED = 0x71
+PRESENCE_LIST = 0x72
 
 
 class Client
@@ -52,7 +72,8 @@ class Client
 
     unless @socket && @socket.state == "CONNECTED"
       if window.WebSocket != undefined
-        @socket = new WebSocketTransport(@app, @secure)
+        # @socket = new WebSocketTransport(@app, @secure)
+        @socket = new MockTransport(@app, @secure)
         @socket.on("message", () => @process.apply(this, arguments))
         @socket.on("connect", () => @trigger("connect"))
         @socket.on("connecting", () => @trigger("connecting"))
