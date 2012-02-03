@@ -27,6 +27,7 @@ LOG_DENIED = 0x52
 AUTHORIZE = 0x60
 AUTHORIZE_COMPLETE = 0x61
 
+
 class Client
   
   constructor: () ->
