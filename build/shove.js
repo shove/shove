@@ -29,11 +29,11 @@
       this.callbacks = {};
       this.connections = 0;
       this.forcedc = false;
-      this.hosts = ["localhost:7001"];
+      this.hosts = ["shove.dev:9000"];
     }
 
     Transport.prototype.requestHosts = function() {
-      return injectScript("hostlookup", "http://localhost:7000/apps/" + this.app + "/nodes");
+      return injectScript("hostlookup", "http://shove.dev:8080/apps/" + this.app + "/nodes");
     };
 
     Transport.prototype.updateHosts = function(hosts) {
@@ -184,7 +184,7 @@
       this.name = name;
       this.transport = transport;
       this.events = {
-        "*": []
+        "message": []
       };
       this.filters = [];
       this.state = "unsubscribed";

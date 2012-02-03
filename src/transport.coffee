@@ -41,7 +41,7 @@ class Transport
     @hosts = ["shove.dev:9000"]
   
   requestHosts: () ->
-    injectScript("hostlookup", "http://shove.dev:8000/apps/#{@app}/nodes") 
+    injectScript("hostlookup", "http://shove.dev:8080/apps/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")
