@@ -1,7 +1,5 @@
 src_files:
     - lib/swfobject.js
     - lib/json2.js
-    - build/channel.js
-    - build/transport.js
     - build/shove.js
 
