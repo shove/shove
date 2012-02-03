@@ -149,6 +149,19 @@ task :build do
 
 end
 
+desc "Autocompile"
+task :autobuild do
+  Log.info "Watching coffee..."
+  
+  unless Dir.exists?(OUT_DIR)
+    Dir.mkdir(OUT_DIR)
+  end
+  
+  target = "#{OUT_DIR}/shove.js"
+  
+  system "coffee -w -o #{OUT_DIR} -c #{FILES}"
+end
+
 desc "Publish the result javascript code to S3 and invalidate CF cache"
 task :publish => [:build] do
 
