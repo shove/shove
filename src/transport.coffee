@@ -38,10 +38,10 @@ class Transport
     @callbacks = {}
     @connections = 0
     @forcedc = false
-    @hosts = ["localhost:7001"]
+    @hosts = ["shove.dev:9000"]
   
   requestHosts: () ->
-    injectScript("hostlookup", "http://localhost:7000/apps/#{@app}/nodes") 
+    injectScript("hostlookup", "http://shove.dev:8000/apps/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")

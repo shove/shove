@@ -133,7 +133,7 @@ task :build do
   # Clean up the links
   js = File.open(target).read
   js.gsub! "localhost:8888/lib", "cdn.shove.io"
-  js.gsub! "localhost:7000", "api.shove.io"   
+  js.gsub! "shove.dev:8000", "api.shove.io"   
   js = YUICompressor.compress_js(js, :munge => true)
 
   Log.info "Combining..."
