@@ -8,7 +8,6 @@ transportEvents = [
   "disconnect"
   "message"
   "reconnect"
-  "reconnect"
   "error"
   "statechange"
   "hostlookup"

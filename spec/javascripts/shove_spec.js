@@ -120,66 +120,66 @@ describe("$shove", function() {
   });
   
   
-  describe("private channel", function() {
-    var channel;
-    var unauthorized = false;
-    
-    it("should receive a unauthorized event on a private channel", function() {
-      channel = $shove.channel("private:test").on("unauthorized", function(e) {
-        unauthorized = true;
-      });
+  // describe("private channel", function() {
+  //   var channel;
+  //   var unauthorized = false;
+  //   
+  //   it("should receive a unauthorized event on a private channel", function() {
+  //     channel = $shove.channel("private:test").on("unauthorized", function(e) {
+  //       unauthorized = true;
+  //     });
+  // 
+  //     waitsFor(function() {
+  //       return channel.state == "unauthorized";
+  //     }, "Channel subscription failed", 100);
+  //   
+  //   });
+  //   
+  //   it("should receive a unauthorized event", function() {
+  //     expect(channel.state).toEqual("unauthorized");
+  //   });
+  // 
+  //   it("should trigger a unauthorized event", function() {
+  //     expect(unauthorized).toEqual(true);
+  //   });
+  //   
+  // });
 
-      waitsFor(function() {
-        return channel.state == "unauthorized";
-      }, "Channel subscription failed", 100);
-    
-    });
-    
-    it("should receive a unauthorized event", function() {
-      expect(channel.state).toEqual("unauthorized");
-    });
-
-    it("should trigger a unauthorized event", function() {
-      expect(unauthorized).toEqual(true);
-    });
-    
-  });
-
-  describe("presence channel", function() {
-    var channel;
-    var messages = [];
-    var _presence = false;
-    
-    it("should subscribe to a presence channel", function() {
-
-      channel = $shove.channel("presence:test").on("*", function(e) {
-        messages.push(e);
-      });
-      
-      channel.on("presence", function() {
-        _presence = true;
-      });
-      
-      waitsFor(function() {
-        return messages.length == 2;
-      }, "Channel broadcast failed", 100);
-    });
-    
-    
-    it("should have a message", function() {
-      expect(messages.length).toEqual(2)
-    });
-    
-    it("should receive subscribed and presence event", function() {
-      expect(messages.shift().event).toEqual("subscribed");
-      expect(messages.shift().event).toEqual("presence");
-    });
-
-    it("should trigger a presence event", function() {
-      expect(_presence).toEqual(true);
-    });
-    
-  });
+  // describe("presence channel", function() {
+  //   var channel;
+  //   var messages = [];
+  //   var _presence = false;
+  //   
+  //   it("should subscribe to a presence channel", function() {
+  // 
+  //     channel = $shove.channel("presence:test").on("*", function(e) {
+  //       messages.push(e);
+  //     });
+  //     
+  //     channel.on("presence", function() {
+  //       _presence = true;
+  //     });
+  //     
+  //     waitsFor(function() {
+  //       return messages.length == 2;
+  //     }, "Channel broadcast failed", 100);
+  //   });
+  //   
+  //   
+  //   it("should have a message", function() {
+  //     expect(messages.length).toEqual(2)
+  //   });
+  //   
+  //   it("should receive subscribed and presence event", function() {
+  //     expect(messages.shift().event).toEqual("subscribed");
+  //     expect(messages.shift().event).toEqual("presence");
+  //   });
+  // 
+  //   it("should trigger a presence event", function() {
+  //     expect(_presence).toEqual(true);
+  //   });
+  //   
+  // });
   
   describe("disconnect", function() {
     

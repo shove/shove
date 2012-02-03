@@ -78,7 +78,7 @@ task :default => [:build]
 
 desc "Compile coffeescript to js"
 task :compile do
-  run "coffee -o tmp --compile #{FILES}"
+  system "coffee -o tmp --compile #{FILES}"
 end
 
 desc "Publish dev to S3"
