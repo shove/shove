@@ -60,7 +60,7 @@ class Client
     @channels = {}
     @authorized = false
     
-  # Connect to a app
+  # Connect to an app
   # `app` The name of the app
   connect: (app, opts) ->
     

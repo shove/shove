@@ -65,7 +65,7 @@ class Transport
   # `cb` the callback to execute on event
   on: (event, cb) ->
     if transportEvents.indexOf(event) == -1
-      console.error("Unknow event #{event}.  Valid events: #{transportEvents.join(", ")}")
+      console.error("Unknown event #{event}.  Valid events: #{transportEvents.join(", ")}")
     else
       unless @callbacks[event]
         @callbacks[event] = []
@@ -189,9 +189,110 @@ class WebSocketTransport extends Transport
 # Copy of WebSocketTransport with a mock server
 # for testing shove clients
 class MockTransport extends Transport
+  
+  class Server
+    constructor: () ->
+      @networks = {}
+      @clients = []
+    
+    addNetwork: (networkName) ->
+      @networks[networkName] = new Network(networkName)
+    
+    removeNetwork: (networkName) ->
+      delete @networks[networkName]
+    
+    hasNetwork: (name) ->
+      !!@networks[name]
+
+    addClient: () ->
+      @clients.push(new Client())
+      return @clients.length - 1
+
+    removeClient: (id) ->
+      delete @clients[id]
+
+    hasClient: (id) ->
+      @clients.indexOf(id) >= 0
+
+    class Client
+      constructor: () ->
+
+    class Network
+      constructor: (@name) ->
+        @channels = {}
+        @clients = []
+        @authorizers = []
+    
+      addChannel: (name) ->
+        @channels[name] = new Channel(name)
+        this
+    
+      removeChannel: (name) ->
+        delete @channels[name]
+        this
+      
+      hasChannel: (name) ->
+        !! @channels[name]
+    
+      addClient: (id) ->
+        @clients.push(id)
+        this
+    
+      removeClient: (id) ->
+        @removeAuthorizer(id)
+        @clients.splice(@clients.indexOf(id),1)
+        this
+      
+      hasClient: (id) ->
+        @clients.indexOf(id) >= 0
+      
+      addAuthorizer: (id) ->
+        unless @hasClient(id)
+          @addClient(id)
+        @authorizers.push(id)
+        this
+      
+      removeAuthorizer: (id) ->
+        @authorizers.splice(@authorizers.indexOf(id),1)
+        this
+      
+      hasAuthorizer: (id) ->
+        @authorizers.indexOf(id) >= 0
+    
+      class Channel
+        constructor: (@name) ->
+          @subscribers = []
+          @publishers = []
+    
+        addSubscriber: (id) ->
+          @subscribers.push(id)
+          this
+    
+        removeSubscriber: (id) ->
+          @subscribers.splice(@subscribers.indexOf(id),1)
+          this
+        
+        hasSubscriber: (id) ->
+          @subscribers.indexOf(id) >= 0
+    
+        addPublisher: (id) ->
+          @publishers.push(id)
+          this
+    
+        removePublisher: (id) ->
+          @publishers.splice(@publishers.indexOf(id),1)
+          this
+        
+        hasPublisher: (id) ->
+          @publishers.indexOf(id) >= 0
+      
+    
   constructor: (app, secure) ->
     super(app, secure)
     @hosts = []
+    
+    @server = new Server()
+    @server.addNetwork(app)
 
   # Override
   connect: ->
@@ -207,31 +308,61 @@ class MockTransport extends Transport
     @socket.onclose = => @disconnected()
     @socket.onmessage = (e) => @process(e)
     @socket.onopen = => @connected()
-    
     @socket.send = (frame) =>
-      
+      console.log("-------SEND-------")
+      _frame = @decode(frame)
+      console.log("frame:",frame)
+
       response = {
         opcode: ERROR
-        channel: frame.channel
+        _opcode: ""
+        channel: _frame.channel
         data: ""
       }
       
-      switch frame.opcode
+      console.log(@server)
+      
+      switch _frame.opcode
         when SUBSCRIBE
-          response.opcode = SUBSCRIBE_COMPLETE
+          console.log("SUBSCRIBE")
+          if @server.networks[@app].clients.indexOf(@clientId) >= 0
+            unless @server.networks[@app].channels[_frame.channel]
+              @server.networks[@app].addChannel(_frame.channel)
+            @server.networks[@app].channels[_frame.channel].addSubscriber(@clientId)
+            response.opcode = SUBSCRIBE_COMPLETE
+          else
+            response.opcode = SUBSCRIBE_DENIED
         when UNSUBSCRIBE
+          console.log("UNSUBSCRIBE")
+          @server.networks[@app].channels[_frame].removeSubscriber(@clientId)
           response.opcode = UNSUBSCRIBE_COMPLETE
         when PUBLISH
-          response = frame
+          console.log("PUBLISH")
+          if ! @server.networks[@app].hasChannel(_frame.channel)
+            response.opcode = ERROR
+            response.data = "channel '" + _frame.channel + "' does not exist on the network '" + @app + "'"
+          else if !@server.networks[@app].channels[_frame.channel].hasPublisher(@clientId)
+            response.opcode = PUBLISH_DENIED
+            response.data = "client does not have publish priviledges on channel '" + _frame.channel + "'"
+          else
+            response = _frame
+          
         when AUTHORIZE
+          console.log("AUTHORIZE")
           response.opcode = AUTHORIZE_COMPLETE
 
+      response._opcode = response.opcode.toString(16)
+      console.log("response:",response._opcode,response)
       @dispatch("message",response)
-      @
+      this
 
     @forcedc = false
+    
+    @clientId = @server.addClient()
+    @server.networks[@app].addClient(@clientId)
     @socket.onopen()
-    @dispatch("message",{opcode:CONNECT_COMPLETE,channel:"",data:0})
+    @dispatch("message",{opcode:CONNECT_COMPLETE,channel:"",data:@clientId})
+    this
 
   # Override
   disconnect: ->
