@@ -2,7 +2,8 @@
   var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT_COMPLETE, CONNECT_DENIED, Channel, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents,
     __slice = Array.prototype.slice,
     __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
+    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "error", "statechange", "hostlookup"];
 
@@ -202,7 +203,7 @@
       };
 
       Server.prototype.hasNetwork = function(name) {
-        return !!this.networks[name];
+        return __indexOf.call(this.networks, name) >= 0;
       };
 
       Server.prototype.addClient = function() {
@@ -247,7 +248,7 @@
         };
 
         Network.prototype.hasChannel = function(name) {
-          return !!this.channels[name];
+          return __indexOf.call(this.channels, name) >= 0;
         };
 
         Network.prototype.addClient = function(id) {
@@ -257,8 +258,7 @@
 
         Network.prototype.removeClient = function(id) {
           this.removeAuthorizer(id);
-          this.clients.splice(this.clients.indexOf(id), 1);
-          return this;
+          return this.clients.splice(this.clients.indexOf(id), 1);
         };
 
         Network.prototype.hasClient = function(id) {
@@ -272,8 +272,7 @@
         };
 
         Network.prototype.removeAuthorizer = function(id) {
-          this.authorizers.splice(this.authorizers.indexOf(id), 1);
-          return this;
+          return this.authorizers.splice(this.authorizers.indexOf(id), 1);
         };
 
         Network.prototype.hasAuthorizer = function(id) {
@@ -294,8 +293,7 @@
           };
 
           Channel.prototype.removeSubscriber = function(id) {
-            this.subscribers.splice(this.subscribers.indexOf(id), 1);
-            return this;
+            return this.subscribers.splice(this.subscribers.indexOf(id), 1);
           };
 
           Channel.prototype.hasSubscriber = function(id) {
@@ -308,8 +306,7 @@
           };
 
           Channel.prototype.removePublisher = function(id) {
-            this.publishers.splice(this.publishers.indexOf(id), 1);
-            return this;
+            return this.publishers.splice(this.publishers.indexOf(id), 1);
           };
 
           Channel.prototype.hasPublisher = function(id) {

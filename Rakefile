@@ -14,7 +14,8 @@ VERSION = "0.8"
 FILES = [
   "src/transport.coffee",
   "src/channel.coffee",
-  "src/shove.coffee"
+  "src/shove.coffee",
+  "src/mock_transport.coffee"
 ].join(" ")
 
 # Where we write compiled files
