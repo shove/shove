@@ -41,7 +41,7 @@ LOG_DENIED = 0x52
   
 # Self authorize
 AUTHORIZE = 0x60
-AUTHORIZE_COMPLETE = 0x61
+AUTHORIZE_GRANTED = 0x61
 AUTHORIZE_DENIED = 0x62
     
 # Presence Ops
@@ -74,14 +74,13 @@ class Client
 
     unless @socket && @socket.state == "CONNECTED"
       if window.WebSocket != undefined
-        # @socket = new WebSocketTransport(@app, @secure)
-        @socket = new MockTransport(@app, @secure)
+        @socket = new WebSocketTransport(@app, @secure)
         @socket.on("message", () => @process.apply(this, arguments))
         @socket.on("connect", () => @trigger("connect"))
         @socket.on("connecting", () => @trigger("connecting"))
         @socket.on("disconnect", () => @trigger("disconnect"))
         @socket.on("reconnect", () => @onReconnect())
-        @socket.connect()
+        @socket.connect(@id)
       this
        
   # Disconnect from current app
@@ -140,12 +139,12 @@ class Client
   process: (e) ->
     chan = @channels[e.channel]
     switch e.opcode
-      when CONNECT_COMPLETE then @id = e.data
-      when SUBSCRIBE_COMPLETE then chan.transition("subscribed")
+      when CONNECT_GRANTED then @id = e.data
+      when SUBSCRIBE_GRANTED then chan.transition("subscribed")
       when UNSUBSCRIBE_COMPLETE then chan.transition("unsubscribed")
       when SUBSCRIBE_DENIED then chan.transition("unauthorized")
       when PUBLISH then chan.process(e.data)
-      when AUTHORIZE_COMPLETE then @authorized = true
+      when AUTHORIZE_GRANTED then @authorized = true
       when ERROR then console.log(e.data)
       else
         return

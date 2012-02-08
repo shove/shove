@@ -1,6 +1,9 @@
 (function() {
-  var AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT, CONNECT_DENIED, CONNECT_GRANTED, Channel, Client, DENY_CONNECT, DENY_CONTROL, DENY_PUBLISH, DENY_SUBSCRIBE, DISCONNECT, DISCONNECT_COMPLETE, ERROR, GRANT_CONNECT, GRANT_CONTROL, GRANT_PUBLISH, GRANT_SUBSCRIBE, LOG, LOG_DENIED, LOG_STARTED, MockSocket, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_DENIED, PUBLISH_GRANTED, SUBSCRIBE, SUBSCRIBE_DENIED, SUBSCRIBE_GRANTED, ShoveMockChannel, ShoveMockClient, ShoveMockNetwork, ShoveMockServer, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents;
-  var __slice = Array.prototype.slice, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; }, __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (__hasProp.call(this, i) && this[i] === item) return i; } return -1; };
+  var AUTHORIZE, AUTHORIZE_DENIED, AUTHORIZE_GRANTED, CONNECT, CONNECT_DENIED, CONNECT_GRANTED, Channel, Client, DENY_CONNECT, DENY_CONTROL, DENY_PUBLISH, DENY_SUBSCRIBE, DISCONNECT, DISCONNECT_COMPLETE, ERROR, GRANT_CONNECT, GRANT_CONTROL, GRANT_PUBLISH, GRANT_SUBSCRIBE, LOG, LOG_DENIED, LOG_STARTED, MockSocket, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_DENIED, PUBLISH_GRANTED, SUBSCRIBE, SUBSCRIBE_DENIED, SUBSCRIBE_GRANTED, ShoveMockChannel, ShoveMockClient, ShoveMockNetwork, ShoveMockServer, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents,
+    __slice = Array.prototype.slice,
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
+    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "error", "statechange", "hostlookup"];
 
@@ -90,6 +93,7 @@
     };
 
     Transport.prototype.process = function(msg) {
+      console.log(msg);
       return this.dispatch("message", this.decode(msg.data));
     };
 
@@ -108,8 +112,8 @@
     };
 
     Transport.prototype.disconnected = function() {
-      var closed;
-      var _this = this;
+      var closed,
+        _this = this;
       this.state = "DISCONNECTED";
       this.dispatch("disconnect");
       closed = function() {
@@ -135,16 +139,17 @@
 
   })();
 
-  WebSocketTransport = (function() {
+  WebSocketTransport = (function(_super) {
 
-    __extends(WebSocketTransport, Transport);
+    __extends(WebSocketTransport, _super);
 
     function WebSocketTransport(app, secure) {
       WebSocketTransport.__super__.constructor.call(this, app, secure);
     }
 
-    WebSocketTransport.prototype.connect = function() {
+    WebSocketTransport.prototype.connect = function(id) {
       var _this = this;
+      if (id == null) id = null;
       if (this.state === "CONNECTED") return;
       if (!this.hosts) {
         this.dispatch("hostlookup");
@@ -157,12 +162,24 @@
         return _this.disconnected();
       };
       this.socket.onmessage = function(e) {
-        return _this.process(e);
+        return _this.transmitProcess(e);
       };
       this.socket.onopen = function() {
-        return _this.connected();
+        return _this.socket.send(JSON.stringify({
+          opcode: CONNECT,
+          id: id
+        }));
       };
       return this.forcedc = false;
+    };
+
+    WebSocketTransport.prototype.transportProcess = function(e) {
+      if (__indexOf.call(e, opcode) < 0) return;
+      if (e.opcode === CONNECT_GRANTED) {
+        return this.connected();
+      } else {
+        return this.process(e);
+      }
     };
 
     WebSocketTransport.prototype.disconnect = function() {
@@ -176,7 +193,7 @@
 
     return WebSocketTransport;
 
-  })();
+  })(Transport);
 
   Channel = (function() {
 
@@ -315,7 +332,7 @@
 
   AUTHORIZE = 0x60;
 
-  AUTHORIZE_COMPLETE = 0x61;
+  AUTHORIZE_GRANTED = 0x61;
 
   AUTHORIZE_DENIED = 0x62;
 
@@ -339,8 +356,8 @@
     }
 
     Client.prototype.connect = function(app, opts) {
-      var key, val;
-      var _this = this;
+      var key, val,
+        _this = this;
       if (opts != null) {
         for (key in opts) {
           if (!__hasProp.call(opts, key)) continue;
@@ -351,7 +368,7 @@
       this.app = app;
       if (!(this.socket && this.socket.state === "CONNECTED")) {
         if (window.WebSocket !== void 0) {
-          this.socket = new MockTransport(this.app, this.secure);
+          this.socket = new WebSocketTransport(this.app, this.secure);
           this.socket.on("message", function() {
             return _this.process.apply(_this, arguments);
           });
@@ -367,7 +384,7 @@
           this.socket.on("reconnect", function() {
             return _this.onReconnect();
           });
-          this.socket.connect();
+          this.socket.connect(this.id);
         }
         return this;
       }
@@ -421,10 +438,10 @@
       var chan;
       chan = this.channels[e.channel];
       switch (e.opcode) {
-        case CONNECT_COMPLETE:
+        case CONNECT_GRANTED:
           this.id = e.data;
           break;
-        case SUBSCRIBE_COMPLETE:
+        case SUBSCRIBE_GRANTED:
           chan.transition("subscribed");
           break;
         case UNSUBSCRIBE_COMPLETE:
@@ -436,7 +453,7 @@
         case PUBLISH:
           chan.process(e.data);
           break;
-        case AUTHORIZE_COMPLETE:
+        case AUTHORIZE_GRANTED:
           this.authorized = true;
           break;
         case ERROR:
@@ -675,33 +692,29 @@
 
   MockSocket = (function() {
 
-    MockSocket.CONNECTING = 0;
-
-    MockSocket.OPEN = 1;
-
-    MockSocket.CLOSING = 2;
-
-    MockSocket.CLOSED = 3;
-
     function MockSocket() {
       var protocols, url;
       url = arguments[0], protocols = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
       this.url = url;
       this.protocols = protocols;
+      console.log("MockSocket constructor");
       this.extensions = "";
       this.protocol = "";
-      this.readyState = MockSocket.CONNECTING;
+      this.readyState = 0;
       this.bufferedAmount = 0;
-      this.onopen();
+      console.log("before mockserver");
       this.server = new ShoveMockServer();
-      this.network = this.server.addNetwork(app);
+      console.log("after mockserver");
+      console.log("after add network");
+      this.onopen();
+      console.log("after onopen");
       this;
     }
 
     MockSocket.prototype.close = function(code, reason) {
       if (code == null) code = 0;
       if (reason == null) reason = "";
-      this.readyState = MockSocket.CLOSED;
+      this.readyState = 3;
       return this.onclose();
     };
 
@@ -714,31 +727,36 @@
     MockSocket.prototype.onmessage = function() {};
 
     MockSocket.prototype.send = function(msg) {
-      var channel, frame, response;
+      var channel, frame, response, _opcode, _ref;
+      if (msg == null) msg = "{}";
       frame = JSON.parse(msg);
-      channel = this.network.findChannel(frame.channel);
+      if (_ref = !opcode, __indexOf.call(frame, _ref) >= 0) {
+        this.onerror();
+        return null;
+      }
+      response = {
+        opcode: ERROR,
+        data: ""
+      };
+      if (frame.opcode !== CONNECT) {
+        if (__indexOf.call(frame, channel) < 0) {
+          this.onerrer();
+          return null;
+        }
+        channel = this.network.findChannel(frame.channel);
+      }
       console.log("-------SEND-------");
       console.log("frame:", frame);
       console.log(this.server);
       console.log(this.server.hasClient(this.client));
       console.log(this.network.hasClient(this.client));
-      response = {
-        opcode: ERROR,
-        _opcode: "",
-        channel: frame.channel,
-        data: ""
-      };
       switch (frame.opcode) {
         case CONNECT:
           console.log("CONNECT");
-          this.client = this.server.addClient();
-          this.network.addClient(this.client);
-          this.socket.onopen();
-          this.dispatch("message", {
-            opcode: CONNECT_COMPLETE,
-            channel: "",
-            data: this.client.id
-          });
+          this.network = this.server.addNetwork(frame.network);
+          this.client = this.server.addClient(frame.id);
+          response.opcode = CONNECT_GRANTED;
+          response.data = this.client.id;
           break;
         case SUBSCRIBE:
           console.log("SUBSCRIBE");
@@ -776,52 +794,13 @@
           console.log("AUTHORIZE");
           response.opcode = AUTHORIZE_COMPLETE;
       }
-      response._opcode = response.opcode.toString(16);
-      console.log("response:", response._opcode, response);
+      _opcode = response.opcode.toString(16);
+      console.log("response:", _opcode, response);
       this.onmessage(JSON.stringify(response));
       return null;
     };
 
     return MockSocket;
-
-  })();
-
-  MockTransport = (function() {
-
-    __extends(MockTransport, Transport);
-
-    function MockTransport(app, secure) {
-      MockTransport.__super__.constructor.call(this, app, secure);
-    }
-
-    MockTransport.prototype.connect = function() {
-      var _this = this;
-      if (this.state === "CONNECTED") return;
-      this.dispatch("hostlookup");
-      this.dispatch("connecting");
-      this.socket = new MockSocket();
-      this.socket.onclose = function() {
-        return _this.disconnected();
-      };
-      this.socket.onmessage = function(e) {
-        return _this.process(e);
-      };
-      this.socket.onopen = function() {
-        return _this.connected();
-      };
-      return this.forcedc = false;
-    };
-
-    MockTransport.prototype.disconnect = function() {
-      this.forcedc = true;
-      return this.socket.close();
-    };
-
-    MockTransport.prototype.transmit = function(frame) {
-      return this.socket.send(frame);
-    };
-
-    return MockTransport;
 
   })();
 

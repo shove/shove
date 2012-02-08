@@ -15,7 +15,7 @@ FILES = [
   "src/transport.coffee",
   "src/channel.coffee",
   "src/shove.coffee",
-  "src/mock_transport.coffee"
+  "src/mock_socket.coffee"
 ].join(" ")
 
 # Where we write compiled files

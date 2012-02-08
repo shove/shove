@@ -133,26 +133,33 @@ class ShoveMockServer
 
 
 class MockSocket
-  @CONNECTING = 0
-  @OPEN = 1
-  @CLOSING = 2
-  @CLOSED = 3
+  # @CONNECTING = 0
+  # @OPEN = 1
+  # @CLOSING = 2
+  # @CLOSED = 3
+  
+  
 
   constructor: (@url,@protocols...) ->
+    console.log("MockSocket constructor")
     @extensions = ""
     @protocol = ""
-    @readyState = MockSocket.CONNECTING
+    # @readyState = MockSocket.CONNECTING
+    @readyState = 0;
     @bufferedAmount = 0
-    @onopen()
 
     # Fake server responses
+    console.log("before mockserver")
     @server = new ShoveMockServer()
-    @network = @server.addNetwork(app)
-
+    console.log("after mockserver")
+    console.log("after add network")
+    @onopen()
+    console.log("after onopen")
     this
 
   close: (code = 0,reason = "") ->
-    @readyState = MockSocket.CLOSED
+    # @readyState = MockSocket.CLOSED
+    @readyState = 3
     @onclose()
 
   onopen: () ->
@@ -163,9 +170,23 @@ class MockSocket
     
   onmessage: () ->
     
-  send: (msg) ->
+  send: (msg = "{}") ->
     frame = JSON.parse(msg)
-    channel = @network.findChannel(frame.channel)
+    
+    if ! opcode in frame
+      @onerror()
+      return null
+    
+    response = {
+      opcode: ERROR
+      data: ""
+    }
+
+    if frame.opcode != CONNECT
+      unless channel in frame
+        @onerrer()
+        return null
+      channel = @network.findChannel(frame.channel)
 
     console.log("-------SEND-------")
     console.log("frame:",frame)
@@ -173,21 +194,16 @@ class MockSocket
     console.log(@server.hasClient(@client))
     console.log(@network.hasClient(@client))
 
-    response = {
-      opcode: ERROR
-      _opcode: ""
-      channel: frame.channel
-      data: ""
-    }
 
     switch frame.opcode
       
       when CONNECT
         console.log("CONNECT")
-        @client = @server.addClient()
-        @network.addClient(@client)
-        @socket.onopen()
-        @dispatch("message",{opcode:CONNECT_COMPLETE,channel:"",data:@client.id})
+        @network = @server.addNetwork(frame.network)
+        @client = @server.addClient(frame.id)
+        
+        response.opcode = CONNECT_GRANTED
+        response.data = @client.id
       
       when SUBSCRIBE
         console.log("SUBSCRIBE")
@@ -222,46 +238,7 @@ class MockSocket
         console.log("AUTHORIZE")
         response.opcode = AUTHORIZE_COMPLETE
 
-    response._opcode = response.opcode.toString(16)
-    console.log("response:",response._opcode,response)
+    _opcode = response.opcode.toString(16)
+    console.log("response:",_opcode,response)
     @onmessage(JSON.stringify(response))
     null
-
-
-
-
-
-#### MockTransport
-
-# Copy of WebSocketTransport with a mock server
-# for testing shove clients
-class MockTransport extends Transport
-      
-  constructor: (app, secure) ->
-    super(app, secure)
-    
-  # Override
-  connect: ->
-    if @state == "CONNECTED"
-      return
-
-    # do a host lookup
-    @dispatch("hostlookup")
-    @dispatch("connecting")
-    @socket = new MockSocket()
-    @socket.onclose = => @disconnected()
-    @socket.onmessage = (e) => @process(e)
-    @socket.onopen = => @connected()
-
-    @forcedc = false
-
-  # Override
-  disconnect: ->
-    @forcedc = true
-    @socket.close()
-
-  # Override
-  transmit: (frame) ->
-    @socket.send(frame)
-
-

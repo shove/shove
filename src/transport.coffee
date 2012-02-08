@@ -100,6 +100,7 @@ class Transport
           
   # Process the message event
   process: (msg) ->
+    console.log(msg)
     @dispatch("message", @decode(msg.data))
   
   # Connected handler
@@ -111,7 +112,7 @@ class Transport
       @dispatch("reconnect")
     else
       @dispatch("connect")
-      
+    
     while @queue.length > 0
       @send(@queue.shift())
     
@@ -155,7 +156,7 @@ class WebSocketTransport extends Transport
     super(app, secure)
 
   # Override
-  connect: ->
+  connect: (id = null) ->
     # skip if we are connected
     if @state == "CONNECTED"
       return
@@ -170,9 +171,23 @@ class WebSocketTransport extends Transport
     @socket = new WebSocket(
       "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}")
     @socket.onclose = => @disconnected()
-    @socket.onmessage = (e) => @process(e)
-    @socket.onopen = => @connected()
+    @socket.onmessage = (e) => @transmitProcess(e)
+    @socket.onopen = => 
+      @socket.send(JSON.stringify({opcode:CONNECT,id:id}))
+      # @connected()
+    
     @forcedc = false
+  
+  transportProcess: (e) ->
+    unless opcode in e
+      return
+    if e.opcode == CONNECT_GRANTED
+      @connected()
+    else
+      @process(e)
+      
+    
+    
   
   # Override
   disconnect: ->
