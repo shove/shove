@@ -1,9 +1,6 @@
 (function() {
-  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT_COMPLETE, CONNECT_DENIED, Channel, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, MockSocket, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, ShoveMockChannel, ShoveMockClient, ShoveMockNetwork, ShoveMockServer, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents,
-    __slice = Array.prototype.slice,
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
-    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT, CONNECT_DENIED, CONNECT_GRANTED, Channel, Client, DENY_CONNECT, DENY_CONTROL, DENY_PUBLISH, DENY_SUBSCRIBE, DISCONNECT, DISCONNECT_COMPLETE, ERROR, GRANT_CONNECT, GRANT_CONTROL, GRANT_PUBLISH, GRANT_SUBSCRIBE, LOG, LOG_DENIED, LOG_STARTED, MockSocket, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_DENIED, PUBLISH_GRANTED, SUBSCRIBE, SUBSCRIBE_DENIED, SUBSCRIBE_GRANTED, ShoveMockChannel, ShoveMockClient, ShoveMockNetwork, ShoveMockServer, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents;
+  var __slice = Array.prototype.slice, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; }, __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (__hasProp.call(this, i) && this[i] === item) return i; } return -1; };
 
   transportEvents = ["connect", "connecting", "disconnect", "message", "reconnect", "error", "statechange", "hostlookup"];
 
@@ -111,8 +108,8 @@
     };
 
     Transport.prototype.disconnected = function() {
-      var closed,
-        _this = this;
+      var closed;
+      var _this = this;
       this.state = "DISCONNECTED";
       this.dispatch("disconnect");
       closed = function() {
@@ -138,9 +135,9 @@
 
   })();
 
-  WebSocketTransport = (function(_super) {
+  WebSocketTransport = (function() {
 
-    __extends(WebSocketTransport, _super);
+    __extends(WebSocketTransport, Transport);
 
     function WebSocketTransport(app, secure) {
       WebSocketTransport.__super__.constructor.call(this, app, secure);
@@ -179,7 +176,7 @@
 
     return WebSocketTransport;
 
-  })(Transport);
+  })();
 
   Channel = (function() {
 
@@ -266,15 +263,21 @@
 
   })();
 
-  ERROR = 0xFF;
+  ERROR = 0x00;
 
-  CONNECT_COMPLETE = 0x00;
+  CONNECT = 0x01;
 
-  CONNECT_DENIED = 0x01;
+  CONNECT_GRANTED = 0x02;
+
+  CONNECT_DENIED = 0x03;
+
+  DISCONNECT = 0x04;
+
+  DISCONNECT_COMPLETE = 0x06;
 
   SUBSCRIBE = 0x10;
 
-  SUBSCRIBE_COMPLETE = 0x11;
+  SUBSCRIBE_GRANTED = 0x11;
 
   SUBSCRIBE_DENIED = 0x12;
 
@@ -286,15 +289,15 @@
 
   PUBLISH_DENIED = 0x21;
 
-  PUBLISH_COMPLETE = 0x22;
+  PUBLISH_GRANTED = 0x22;
 
-  ALLOW_PUBLISH = 0x30;
+  GRANT_PUBLISH = 0x30;
 
-  ALLOW_SUBSCRIBE = 0x31;
+  GRANT_SUBSCRIBE = 0x31;
 
-  ALLOW_CONNECT = 0x32;
+  GRANT_CONNECT = 0x32;
 
-  ALLOW_LOG = 0x33;
+  GRANT_CONTROL = 0x33;
 
   DENY_PUBLISH = 0x40;
 
@@ -302,7 +305,7 @@
 
   DENY_CONNECT = 0x42;
 
-  DENY_LOG = 0x42;
+  DENY_CONTROL = 0x43;
 
   LOG = 0x50;
 
@@ -336,8 +339,8 @@
     }
 
     Client.prototype.connect = function(app, opts) {
-      var key, val,
-        _this = this;
+      var key, val;
+      var _this = this;
       if (opts != null) {
         for (key in opts) {
           if (!__hasProp.call(opts, key)) continue;
@@ -726,6 +729,17 @@
         data: ""
       };
       switch (frame.opcode) {
+        case CONNECT:
+          console.log("CONNECT");
+          this.client = this.server.addClient();
+          this.network.addClient(this.client);
+          this.socket.onopen();
+          this.dispatch("message", {
+            opcode: CONNECT_COMPLETE,
+            channel: "",
+            data: this.client.id
+          });
+          break;
         case SUBSCRIBE:
           console.log("SUBSCRIBE");
           if (!this.network.hasChannel(channel)) {
@@ -772,9 +786,9 @@
 
   })();
 
-  MockTransport = (function(_super) {
+  MockTransport = (function() {
 
-    __extends(MockTransport, _super);
+    __extends(MockTransport, Transport);
 
     function MockTransport(app, secure) {
       MockTransport.__super__.constructor.call(this, app, secure);
@@ -809,6 +823,6 @@
 
     return MockTransport;
 
-  })(Transport);
+  })();
 
 }).call(this);
