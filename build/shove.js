@@ -1,5 +1,5 @@
 (function() {
-  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT_COMPLETE, CONNECT_DENIED, Channel, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents,
+  var ALLOW_CONNECT, ALLOW_LOG, ALLOW_PUBLISH, ALLOW_SUBSCRIBE, AUTHORIZE, AUTHORIZE_COMPLETE, AUTHORIZE_DENIED, CONNECT_COMPLETE, CONNECT_DENIED, Channel, Client, DENY_CONNECT, DENY_LOG, DENY_PUBLISH, DENY_SUBSCRIBE, ERROR, LOG, LOG_DENIED, LOG_STARTED, MockSocket, MockTransport, PRESENCE_LIST, PRESENCE_SUBSCRIBED, PRESENCE_UNSUBSCRIBED, PUBLISH, PUBLISH_COMPLETE, PUBLISH_DENIED, SUBSCRIBE, SUBSCRIBE_COMPLETE, SUBSCRIBE_DENIED, ShoveMockChannel, ShoveMockClient, ShoveMockNetwork, ShoveMockServer, Transport, UNSUBSCRIBE, UNSUBSCRIBE_COMPLETE, WebSocketTransport, head, injectScript, removeScript, transportEvents,
     __slice = Array.prototype.slice,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
@@ -178,248 +178,6 @@
     };
 
     return WebSocketTransport;
-
-  })(Transport);
-
-  MockTransport = (function(_super) {
-    var Server;
-
-    __extends(MockTransport, _super);
-
-    Server = (function() {
-      var Client, Network;
-
-      function Server() {
-        this.networks = {};
-        this.clients = [];
-      }
-
-      Server.prototype.addNetwork = function(networkName) {
-        return this.networks[networkName] = new Network(networkName);
-      };
-
-      Server.prototype.removeNetwork = function(networkName) {
-        return delete this.networks[networkName];
-      };
-
-      Server.prototype.hasNetwork = function(name) {
-        return __indexOf.call(this.networks, name) >= 0;
-      };
-
-      Server.prototype.addClient = function() {
-        this.clients.push(new Client());
-        return this.clients.length - 1;
-      };
-
-      Server.prototype.removeClient = function(id) {
-        return delete this.clients[id];
-      };
-
-      Server.prototype.hasClient = function(id) {
-        return this.clients.indexOf(id) >= 0;
-      };
-
-      Client = (function() {
-
-        function Client() {}
-
-        return Client;
-
-      })();
-
-      Network = (function() {
-        var Channel;
-
-        function Network(name) {
-          this.name = name;
-          this.channels = {};
-          this.clients = [];
-          this.authorizers = [];
-        }
-
-        Network.prototype.addChannel = function(name) {
-          this.channels[name] = new Channel(name);
-          return this;
-        };
-
-        Network.prototype.removeChannel = function(name) {
-          delete this.channels[name];
-          return this;
-        };
-
-        Network.prototype.hasChannel = function(name) {
-          return __indexOf.call(this.channels, name) >= 0;
-        };
-
-        Network.prototype.addClient = function(id) {
-          this.clients.push(id);
-          return this;
-        };
-
-        Network.prototype.removeClient = function(id) {
-          this.removeAuthorizer(id);
-          return this.clients.splice(this.clients.indexOf(id), 1);
-        };
-
-        Network.prototype.hasClient = function(id) {
-          return this.clients.indexOf(id) >= 0;
-        };
-
-        Network.prototype.addAuthorizer = function(id) {
-          if (!this.hasClient(id)) this.addClient(id);
-          this.authorizers.push(id);
-          return this;
-        };
-
-        Network.prototype.removeAuthorizer = function(id) {
-          return this.authorizers.splice(this.authorizers.indexOf(id), 1);
-        };
-
-        Network.prototype.hasAuthorizer = function(id) {
-          return this.authorizers.indexOf(id) >= 0;
-        };
-
-        Channel = (function() {
-
-          function Channel(name) {
-            this.name = name;
-            this.subscribers = [];
-            this.publishers = [];
-          }
-
-          Channel.prototype.addSubscriber = function(id) {
-            this.subscribers.push(id);
-            return this;
-          };
-
-          Channel.prototype.removeSubscriber = function(id) {
-            return this.subscribers.splice(this.subscribers.indexOf(id), 1);
-          };
-
-          Channel.prototype.hasSubscriber = function(id) {
-            return this.subscribers.indexOf(id) >= 0;
-          };
-
-          Channel.prototype.addPublisher = function(id) {
-            this.publishers.push(id);
-            return this;
-          };
-
-          Channel.prototype.removePublisher = function(id) {
-            return this.publishers.splice(this.publishers.indexOf(id), 1);
-          };
-
-          Channel.prototype.hasPublisher = function(id) {
-            return this.publishers.indexOf(id) >= 0;
-          };
-
-          return Channel;
-
-        })();
-
-        return Network;
-
-      })();
-
-      return Server;
-
-    })();
-
-    function MockTransport(app, secure) {
-      MockTransport.__super__.constructor.call(this, app, secure);
-      this.hosts = [];
-      this.server = new Server();
-      this.server.addNetwork(app);
-    }
-
-    MockTransport.prototype.connect = function() {
-      var _this = this;
-      if (this.state === "CONNECTED") return;
-      this.dispatch("hostlookup");
-      this.dispatch("connecting");
-      this.socket = {};
-      this.socket.onclose = function() {
-        return _this.disconnected();
-      };
-      this.socket.onmessage = function(e) {
-        return _this.process(e);
-      };
-      this.socket.onopen = function() {
-        return _this.connected();
-      };
-      this.socket.send = function(frame) {
-        var response, _frame;
-        console.log("-------SEND-------");
-        _frame = _this.decode(frame);
-        console.log("frame:", frame);
-        response = {
-          opcode: ERROR,
-          _opcode: "",
-          channel: _frame.channel,
-          data: ""
-        };
-        console.log(_this.server);
-        switch (_frame.opcode) {
-          case SUBSCRIBE:
-            console.log("SUBSCRIBE");
-            if (_this.server.networks[_this.app].clients.indexOf(_this.clientId) >= 0) {
-              if (!_this.server.networks[_this.app].channels[_frame.channel]) {
-                _this.server.networks[_this.app].addChannel(_frame.channel);
-              }
-              _this.server.networks[_this.app].channels[_frame.channel].addSubscriber(_this.clientId);
-              response.opcode = SUBSCRIBE_COMPLETE;
-            } else {
-              response.opcode = SUBSCRIBE_DENIED;
-            }
-            break;
-          case UNSUBSCRIBE:
-            console.log("UNSUBSCRIBE");
-            _this.server.networks[_this.app].channels[_frame].removeSubscriber(_this.clientId);
-            response.opcode = UNSUBSCRIBE_COMPLETE;
-            break;
-          case PUBLISH:
-            console.log("PUBLISH");
-            if (!_this.server.networks[_this.app].hasChannel(_frame.channel)) {
-              response.opcode = ERROR;
-              response.data = "channel '" + _frame.channel + "' does not exist on the network '" + _this.app + "'";
-            } else if (!_this.server.networks[_this.app].channels[_frame.channel].hasPublisher(_this.clientId)) {
-              response.opcode = PUBLISH_DENIED;
-              response.data = "client does not have publish priviledges on channel '" + _frame.channel + "'";
-            } else {
-              response = _frame;
-            }
-            break;
-          case AUTHORIZE:
-            console.log("AUTHORIZE");
-            response.opcode = AUTHORIZE_COMPLETE;
-        }
-        response._opcode = response.opcode.toString(16);
-        console.log("response:", response._opcode, response);
-        _this.dispatch("message", response);
-        return _this;
-      };
-      this.forcedc = false;
-      this.clientId = this.server.addClient();
-      this.server.networks[this.app].addClient(this.clientId);
-      this.socket.onopen();
-      this.dispatch("message", {
-        opcode: CONNECT_COMPLETE,
-        channel: "",
-        data: this.clientId
-      });
-      return this;
-    };
-
-    MockTransport.prototype.disconnect = function() {
-      this.forcedc = true;
-      return this.disconnected;
-    };
-
-    MockTransport.prototype.transmit = function(frame) {
-      return this.socket.send(frame);
-    };
-
-    return MockTransport;
 
   })(Transport);
 
@@ -730,5 +488,327 @@
       };
     }
   })();
+
+  ShoveMockClient = (function() {
+
+    function ShoveMockClient(id) {
+      this.id = id != null ? id : -1;
+    }
+
+    return ShoveMockClient;
+
+  })();
+
+  ShoveMockChannel = (function() {
+
+    function ShoveMockChannel(name) {
+      this.name = name;
+      this.subscribers = [];
+      this.publishers = [];
+    }
+
+    ShoveMockChannel.prototype.addSubscriber = function(client) {
+      this.subscribers.push(client);
+      return this;
+    };
+
+    ShoveMockChannel.prototype.removeSubscriber = function(client) {
+      return this.subscribers.splice(this.subscribers.indexOf(client), 1);
+    };
+
+    ShoveMockChannel.prototype.hasSubscriber = function(client) {
+      return this.subscribers.indexOf(client) >= 0;
+    };
+
+    ShoveMockChannel.prototype.addPublisher = function(client) {
+      this.publishers.push(client);
+      return this;
+    };
+
+    ShoveMockChannel.prototype.removePublisher = function(client) {
+      return this.publishers.splice(this.publishers.indexOf(client), 1);
+    };
+
+    ShoveMockChannel.prototype.hasPublisher = function(client) {
+      return this.publishers.indexOf(client) >= 0;
+    };
+
+    return ShoveMockChannel;
+
+  })();
+
+  ShoveMockNetwork = (function() {
+
+    function ShoveMockNetwork(name) {
+      this.name = name;
+      this.channels = [];
+      this.clients = [];
+      this.authorizers = [];
+    }
+
+    ShoveMockNetwork.prototype.addChannel = function(name) {
+      var channel;
+      channel = new ShoveMockChannel(name);
+      this.channels.push(channel);
+      return channel;
+    };
+
+    ShoveMockNetwork.prototype.removeChannel = function(channel) {
+      return this.channels.splice(this.channels.indexOf(channel), 1);
+    };
+
+    ShoveMockNetwork.prototype.hasChannel = function(channel) {
+      return this.channels.indexOf(channel) >= 0;
+    };
+
+    ShoveMockNetwork.prototype.findChannel = function(name) {
+      var channel, _i, _len, _ref;
+      _ref = this.channels;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        channel = _ref[_i];
+        if (channel.name === name) return channel;
+      }
+      return null;
+    };
+
+    ShoveMockNetwork.prototype.addClient = function(client) {
+      this.clients.push(client);
+      return this;
+    };
+
+    ShoveMockNetwork.prototype.removeClient = function(client) {
+      this.removeAuthorizer(client);
+      return this.clients.splice(this.clients.indexOf(client), 1);
+    };
+
+    ShoveMockNetwork.prototype.hasClient = function(client) {
+      return this.clients.indexOf(client) >= 0;
+    };
+
+    ShoveMockNetwork.prototype.addAuthorizer = function(client) {
+      if (!this.hasClient(client)) this.addClient(client);
+      this.authorizers.push(client);
+      return this;
+    };
+
+    ShoveMockNetwork.prototype.removeAuthorizer = function(client) {
+      return this.authorizers.splice(this.authorizers.indexOf(client), 1);
+    };
+
+    ShoveMockNetwork.prototype.hasAuthorizer = function(client) {
+      return this.authorizers.indexOf(client) >= 0;
+    };
+
+    return ShoveMockNetwork;
+
+  })();
+
+  ShoveMockServer = (function() {
+
+    function ShoveMockServer() {
+      this.networks = [];
+      this.clients = [];
+    }
+
+    ShoveMockServer.prototype.addNetwork = function(name) {
+      return this.networks.push(new ShoveMockNetwork(name));
+    };
+
+    ShoveMockServer.prototype.removeNetwork = function(network) {
+      return this.networks.splice(this.networks.indexOf(network), 1);
+    };
+
+    ShoveMockServer.prototype.hasNetwork = function(network) {
+      return this.networks.indexOf(network) >= 0;
+    };
+
+    ShoveMockServer.prototype.findNetwork = function(name) {
+      var network, _i, _len, _ref;
+      _ref = this.networks;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        network = _ref[_i];
+        if (network.name === name) return network;
+      }
+      return null;
+    };
+
+    ShoveMockServer.prototype.addClient = function(id) {
+      var client;
+      if (id == null) id = this.generateClientId();
+      client = new ShoveMockClient(id);
+      this.clients.push(client);
+      return client;
+    };
+
+    ShoveMockServer.prototype.generateClientId = function() {
+      var _ref;
+      if (_ref = !i, __indexOf.call(this.generateClientId, _ref) >= 0) {
+        this.generateClientId.i = 0;
+      }
+      return "client" + this.generateClientId.i++;
+    };
+
+    ShoveMockServer.prototype.removeClient = function(client) {
+      return this.clients.splice(this.clients.indexOf(client), 1);
+    };
+
+    ShoveMockServer.prototype.hasClient = function(client) {
+      return this.clients.indexOf(client) >= 0;
+    };
+
+    ShoveMockServer.prototype.findClient = function(id) {
+      var client, _i, _len, _ref;
+      _ref = this.clients;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        client = _ref[_i];
+        if (client.id === id) return client;
+      }
+      return null;
+    };
+
+    return ShoveMockServer;
+
+  })();
+
+  MockSocket = (function() {
+
+    MockSocket.CONNECTING = 0;
+
+    MockSocket.OPEN = 1;
+
+    MockSocket.CLOSING = 2;
+
+    MockSocket.CLOSED = 3;
+
+    function MockSocket() {
+      var protocols, url;
+      url = arguments[0], protocols = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      this.url = url;
+      this.protocols = protocols;
+      this.extensions = "";
+      this.protocol = "";
+      this.readyState = MockSocket.CONNECTING;
+      this.bufferedAmount = 0;
+      this.onopen();
+      this.server = new ShoveMockServer();
+      this.network = this.server.addNetwork(app);
+      this;
+    }
+
+    MockSocket.prototype.close = function(code, reason) {
+      if (code == null) code = 0;
+      if (reason == null) reason = "";
+      this.readyState = MockSocket.CLOSED;
+      return this.onclose();
+    };
+
+    MockSocket.prototype.onopen = function() {};
+
+    MockSocket.prototype.onerror = function() {};
+
+    MockSocket.prototype.onclose = function() {};
+
+    MockSocket.prototype.onmessage = function() {};
+
+    MockSocket.prototype.send = function(msg) {
+      var channel, frame, response;
+      frame = JSON.parse(msg);
+      channel = this.network.findChannel(frame.channel);
+      console.log("-------SEND-------");
+      console.log("frame:", frame);
+      console.log(this.server);
+      console.log(this.server.hasClient(this.client));
+      console.log(this.network.hasClient(this.client));
+      response = {
+        opcode: ERROR,
+        _opcode: "",
+        channel: frame.channel,
+        data: ""
+      };
+      switch (frame.opcode) {
+        case SUBSCRIBE:
+          console.log("SUBSCRIBE");
+          if (!this.network.hasChannel(channel)) {
+            response.opcode = SUBSCRIBE_DENIED;
+            response.data = "channel does not exist on the connected network";
+          } else {
+            channel.addSubscriber(this.client);
+            response.opcode = SUBSCRIBE_COMPLETE;
+          }
+          break;
+        case UNSUBSCRIBE:
+          console.log("UNSUBSCRIBE");
+          if (!this.network.hasChannel(channel)) {
+            response.data = "channel does not exist on the connected network";
+          } else if (!this.channel.hasSubscriber(this.client)) {
+            response.data = "you weren't subscribed to the channel in the first place";
+          } else {
+            channel.removeSubscriber(this.client);
+            response.opcode = UNSUBSCRIBE_COMPLETE;
+          }
+          break;
+        case PUBLISH:
+          console.log("PUBLISH");
+          if (!this.network.hasChannel(channel)) {
+            response.data = "channel does not exist on the connected network";
+          } else if (!channel.hasPublisher(this.clientId)) {
+            response.opcode = PUBLISH_DENIED;
+            response.data = "you do not have publishing priviledges on this channel";
+          } else {
+            response = frame;
+          }
+          break;
+        case AUTHORIZE:
+          console.log("AUTHORIZE");
+          response.opcode = AUTHORIZE_COMPLETE;
+      }
+      response._opcode = response.opcode.toString(16);
+      console.log("response:", response._opcode, response);
+      this.onmessage(JSON.stringify(response));
+      return null;
+    };
+
+    return MockSocket;
+
+  })();
+
+  MockTransport = (function(_super) {
+
+    __extends(MockTransport, _super);
+
+    function MockTransport(app, secure) {
+      MockTransport.__super__.constructor.call(this, app, secure);
+    }
+
+    MockTransport.prototype.connect = function() {
+      var _this = this;
+      if (this.state === "CONNECTED") return;
+      this.dispatch("hostlookup");
+      this.dispatch("connecting");
+      this.socket = new MockSocket();
+      this.socket.onclose = function() {
+        return _this.disconnected();
+      };
+      this.socket.onmessage = function(e) {
+        return _this.process(e);
+      };
+      this.socket.onopen = function() {
+        return _this.connected();
+      };
+      return this.forcedc = false;
+    };
+
+    MockTransport.prototype.disconnect = function() {
+      this.forcedc = true;
+      return this.socket.close();
+    };
+
+    MockTransport.prototype.transmit = function(frame) {
+      return this.socket.send(frame);
+    };
+
+    return MockTransport;
+
+  })(Transport);
 
 }).call(this);
