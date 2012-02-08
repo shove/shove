@@ -81,7 +81,8 @@ class Client
         @socket.on("disconnect", () => @trigger("disconnect"))
         @socket.on("reconnect", () => @onReconnect())
         @socket.connect(@id)
-      this
+    
+    this
        
   # Disconnect from current app
   disconnect: () ->

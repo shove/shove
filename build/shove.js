@@ -93,7 +93,7 @@
     };
 
     Transport.prototype.process = function(msg) {
-      console.log(msg);
+      console.log("Transport:process", msg);
       return this.dispatch("message", this.decode(msg.data));
     };
 
@@ -144,11 +144,21 @@
     __extends(WebSocketTransport, _super);
 
     function WebSocketTransport(app, secure) {
+      var _this = this;
       WebSocketTransport.__super__.constructor.call(this, app, secure);
+      this.socket = new MockSocket("" + (this.secure ? "wss" : "ws") + "://" + (this.host()) + "/" + this.app);
+      this.socket.onclose = function() {
+        return _this.disconnected();
+      };
+      this.socket.onmessage = function(e) {
+        return _this.process(e);
+      };
+      this.socket.onopen = function() {
+        return _this.connected();
+      };
     }
 
     WebSocketTransport.prototype.connect = function(id) {
-      var _this = this;
       if (id == null) id = null;
       if (this.state === "CONNECTED") return;
       if (!this.hosts) {
@@ -157,29 +167,11 @@
         return;
       }
       this.dispatch("connecting");
-      this.socket = new WebSocket("" + (this.secure ? "wss" : "ws") + "://" + (this.host()) + "/" + this.app);
-      this.socket.onclose = function() {
-        return _this.disconnected();
-      };
-      this.socket.onmessage = function(e) {
-        return _this.transmitProcess(e);
-      };
-      this.socket.onopen = function() {
-        return _this.socket.send(JSON.stringify({
-          opcode: CONNECT,
-          id: id
-        }));
-      };
+      this.transmit(JSON.stringify({
+        opcode: CONNECT,
+        id: id
+      }));
       return this.forcedc = false;
-    };
-
-    WebSocketTransport.prototype.transportProcess = function(e) {
-      if (__indexOf.call(e, opcode) < 0) return;
-      if (e.opcode === CONNECT_GRANTED) {
-        return this.connected();
-      } else {
-        return this.process(e);
-      }
     };
 
     WebSocketTransport.prototype.disconnect = function() {
@@ -386,8 +378,8 @@
           });
           this.socket.connect(this.id);
         }
-        return this;
       }
+      return this;
     };
 
     Client.prototype.disconnect = function() {
@@ -631,7 +623,10 @@
     }
 
     ShoveMockServer.prototype.addNetwork = function(name) {
-      return this.networks.push(new ShoveMockNetwork(name));
+      var network;
+      network = new ShoveMockNetwork(name);
+      this.networks.push(network);
+      return network;
     };
 
     ShoveMockServer.prototype.removeNetwork = function(network) {
@@ -686,74 +681,33 @@
       return null;
     };
 
-    return ShoveMockServer;
-
-  })();
-
-  MockSocket = (function() {
-
-    function MockSocket() {
-      var protocols, url;
-      url = arguments[0], protocols = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-      this.url = url;
-      this.protocols = protocols;
-      console.log("MockSocket constructor");
-      this.extensions = "";
-      this.protocol = "";
-      this.readyState = 0;
-      this.bufferedAmount = 0;
-      console.log("before mockserver");
-      this.server = new ShoveMockServer();
-      console.log("after mockserver");
-      console.log("after add network");
-      this.onopen();
-      console.log("after onopen");
-      this;
-    }
-
-    MockSocket.prototype.close = function(code, reason) {
-      if (code == null) code = 0;
-      if (reason == null) reason = "";
-      this.readyState = 3;
-      return this.onclose();
-    };
-
-    MockSocket.prototype.onopen = function() {};
-
-    MockSocket.prototype.onerror = function() {};
-
-    MockSocket.prototype.onclose = function() {};
-
-    MockSocket.prototype.onmessage = function() {};
-
-    MockSocket.prototype.send = function(msg) {
-      var channel, frame, response, _opcode, _ref;
+    ShoveMockServer.prototype.process = function(msg, options) {
+      var channel, frame, network, response, _opcode, _ref;
       if (msg == null) msg = "{}";
-      frame = JSON.parse(msg);
-      if (_ref = !opcode, __indexOf.call(frame, _ref) >= 0) {
-        this.onerror();
-        return null;
+      if (options == null) {
+        options = {
+          network: ""
+        };
       }
+      frame = JSON.parse(msg);
+      network = this.findNetwork(options.network);
+      if (!network) return null;
+      if (_ref = !'opcode', __indexOf.call(frame, _ref) >= 0) return null;
       response = {
         opcode: ERROR,
         data: ""
       };
       if (frame.opcode !== CONNECT) {
-        if (__indexOf.call(frame, channel) < 0) {
-          this.onerrer();
-          return null;
-        }
-        channel = this.network.findChannel(frame.channel);
+        if (__indexOf.call(frame, channel) < 0) return null;
+        channel = network.findChannel(frame.channel);
       }
-      console.log("-------SEND-------");
       console.log("frame:", frame);
-      console.log(this.server);
-      console.log(this.server.hasClient(this.client));
-      console.log(this.network.hasClient(this.client));
+      console.log(this);
+      console.log(this.hasClient(this.client));
+      console.log(network.hasClient(this.client));
       switch (frame.opcode) {
         case CONNECT:
           console.log("CONNECT");
-          this.network = this.server.addNetwork(frame.network);
           this.client = this.server.addClient(frame.id);
           response.opcode = CONNECT_GRANTED;
           response.data = this.client.id;
@@ -796,8 +750,53 @@
       }
       _opcode = response.opcode.toString(16);
       console.log("response:", _opcode, response);
-      this.onmessage(JSON.stringify(response));
-      return null;
+      return response;
+    };
+
+    return ShoveMockServer;
+
+  })();
+
+  MockSocket = (function() {
+
+    function MockSocket() {
+      var app, protocols, url, urlMatches, urlReg;
+      url = arguments[0], protocols = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      this.url = url;
+      this.protocols = protocols;
+      this.extensions = "";
+      this.protocol = "";
+      this.readyState = 0;
+      this.bufferedAmount = 0;
+      urlReg = /^([\w\d]+):\/\/([^\/]+)\/([^\/]+)(.*?)$/gi;
+      urlMatches = urlReg.exec(this.url);
+      app = urlMatches[3];
+      this.server = new ShoveMockServer();
+      this.network = this.server.addNetwork(app);
+      this.onopen();
+      this;
+    }
+
+    MockSocket.prototype.close = function(code, reason) {
+      if (code == null) code = 0;
+      if (reason == null) reason = "";
+      this.readyState = 3;
+      return this.onclose();
+    };
+
+    MockSocket.prototype.onopen = function() {};
+
+    MockSocket.prototype.onerror = function() {};
+
+    MockSocket.prototype.onclose = function() {};
+
+    MockSocket.prototype.onmessage = function() {};
+
+    MockSocket.prototype.send = function(msg) {
+      this.onmessage(this.server.process(msg, {
+        network: this.network.name
+      }));
+      return this;
     };
 
     return MockSocket;

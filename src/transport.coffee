@@ -100,7 +100,7 @@ class Transport
           
   # Process the message event
   process: (msg) ->
-    console.log(msg)
+    console.log("Transport:process",msg)
     @dispatch("message", @decode(msg.data))
   
   # Connected handler
@@ -155,6 +155,12 @@ class WebSocketTransport extends Transport
   constructor: (app, secure) ->
     super(app, secure)
 
+    @socket = new MockSocket(
+      "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}")
+    @socket.onclose = => @disconnected()
+    @socket.onmessage = (e) => @process(e)
+    @socket.onopen = => @connected()
+
   # Override
   connect: (id = null) ->
     # skip if we are connected
@@ -168,23 +174,10 @@ class WebSocketTransport extends Transport
       return
        
     @dispatch("connecting")
-    @socket = new WebSocket(
-      "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}")
-    @socket.onclose = => @disconnected()
-    @socket.onmessage = (e) => @transmitProcess(e)
-    @socket.onopen = => 
-      @socket.send(JSON.stringify({opcode:CONNECT,id:id}))
-      # @connected()
+    
+    @transmit(JSON.stringify({opcode:CONNECT,id:id}))
     
     @forcedc = false
-  
-  transportProcess: (e) ->
-    unless opcode in e
-      return
-    if e.opcode == CONNECT_GRANTED
-      @connected()
-    else
-      @process(e)
       
     
     

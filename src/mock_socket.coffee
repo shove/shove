@@ -91,7 +91,9 @@ class ShoveMockServer
     @clients = []
 
   addNetwork: (name) ->
-    @networks.push(new ShoveMockNetwork(name))
+    network = new ShoveMockNetwork(name)
+    @networks.push(network)
+    network
 
   removeNetwork: (network) ->
     @networks.splice(@networks.indexOf(network),1)
@@ -126,55 +128,15 @@ class ShoveMockServer
       if client.id == id
         return client
     return null
-
   
-
-
-
-
-class MockSocket
-  # @CONNECTING = 0
-  # @OPEN = 1
-  # @CLOSING = 2
-  # @CLOSED = 3
-  
-  
-
-  constructor: (@url,@protocols...) ->
-    console.log("MockSocket constructor")
-    @extensions = ""
-    @protocol = ""
-    # @readyState = MockSocket.CONNECTING
-    @readyState = 0;
-    @bufferedAmount = 0
-
-    # Fake server responses
-    console.log("before mockserver")
-    @server = new ShoveMockServer()
-    console.log("after mockserver")
-    console.log("after add network")
-    @onopen()
-    console.log("after onopen")
-    this
-
-  close: (code = 0,reason = "") ->
-    # @readyState = MockSocket.CLOSED
-    @readyState = 3
-    @onclose()
-
-  onopen: () ->
-    
-  onerror: () ->
-    
-  onclose: () ->
-    
-  onmessage: () ->
-    
-  send: (msg = "{}") ->
+  process: (msg = "{}",options = {network:""}) ->
     frame = JSON.parse(msg)
+    network = @findNetwork(options.network)
+
+    if ! network
+      return null
     
-    if ! opcode in frame
-      @onerror()
+    if ! 'opcode' in frame
       return null
     
     response = {
@@ -184,22 +146,19 @@ class MockSocket
 
     if frame.opcode != CONNECT
       unless channel in frame
-        @onerrer()
         return null
-      channel = @network.findChannel(frame.channel)
+      channel = network.findChannel(frame.channel)
 
-    console.log("-------SEND-------")
     console.log("frame:",frame)
-    console.log(@server)
-    console.log(@server.hasClient(@client))
-    console.log(@network.hasClient(@client))
+    console.log(@)
+    console.log(@hasClient(@client))
+    console.log(network.hasClient(@client))
 
 
     switch frame.opcode
       
       when CONNECT
         console.log("CONNECT")
-        @network = @server.addNetwork(frame.network)
         @client = @server.addClient(frame.id)
         
         response.opcode = CONNECT_GRANTED
@@ -240,5 +199,53 @@ class MockSocket
 
     _opcode = response.opcode.toString(16)
     console.log("response:",_opcode,response)
-    @onmessage(JSON.stringify(response))
-    null
+    return response
+
+
+  
+
+
+
+
+class MockSocket
+  # @CONNECTING = 0
+  # @OPEN = 1
+  # @CLOSING = 2
+  # @CLOSED = 3
+  
+  
+
+  constructor: (@url,@protocols...) ->
+    @extensions = ""
+    @protocol = ""
+    # @readyState = MockSocket.CONNECTING
+    @readyState = 0;
+    @bufferedAmount = 0
+    
+    urlReg = /^([\w\d]+):\/\/([^\/]+)\/([^\/]+)(.*?)$/gi
+    urlMatches = urlReg.exec(@url)
+    
+    app = urlMatches[3]
+
+    # Fake server responses
+    @server = new ShoveMockServer()
+    @network = @server.addNetwork(app)
+    @onopen()
+    this
+
+  close: (code = 0,reason = "") ->
+    # @readyState = MockSocket.CLOSED
+    @readyState = 3
+    @onclose()
+
+  onopen: () ->
+    
+  onerror: () ->
+    
+  onclose: () ->
+    
+  onmessage: () ->
+    
+  send: (msg) ->
+    @onmessage(@server.process(msg,{network:@network.name}))
+    this
