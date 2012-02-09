@@ -94,7 +94,7 @@
 
     Transport.prototype.process = function(msg) {
       console.log("Transport:process", msg);
-      return this.dispatch("message", this.decode(msg.data));
+      return this.dispatch("message", this.decode(msg));
     };
 
     Transport.prototype.connected = function(e) {
@@ -169,7 +169,7 @@
       this.dispatch("connecting");
       this.transmit(JSON.stringify({
         opcode: CONNECT,
-        id: id
+        data: id
       }));
       return this.forcedc = false;
     };
@@ -428,6 +428,7 @@
 
     Client.prototype.process = function(e) {
       var chan;
+      console.log("Client:process", e);
       chan = this.channels[e.channel];
       switch (e.opcode) {
         case CONNECT_GRANTED:
@@ -506,6 +507,11 @@
     function ShoveMockClient(id) {
       this.id = id != null ? id : -1;
     }
+
+    ShoveMockClient.prototype.setId = function(id) {
+      this.id = id;
+      return this;
+    };
 
     return ShoveMockClient;
 
@@ -620,6 +626,8 @@
     function ShoveMockServer() {
       this.networks = [];
       this.clients = [];
+      this.effectiveNetwork = null;
+      this.effectiveClient = this.addClient();
     }
 
     ShoveMockServer.prototype.addNetwork = function(name) {
@@ -647,6 +655,11 @@
       return null;
     };
 
+    ShoveMockServer.prototype.setEffectiveNetwork = function(effectiveNetwork) {
+      this.effectiveNetwork = effectiveNetwork;
+      return null;
+    };
+
     ShoveMockServer.prototype.addClient = function(id) {
       var client;
       if (id == null) id = this.generateClientId();
@@ -656,10 +669,7 @@
     };
 
     ShoveMockServer.prototype.generateClientId = function() {
-      var _ref;
-      if (_ref = !i, __indexOf.call(this.generateClientId, _ref) >= 0) {
-        this.generateClientId.i = 0;
-      }
+      if (!this.generateClientId.i) this.generateClientId.i = 0;
       return "client" + this.generateClientId.i++;
     };
 
@@ -681,17 +691,11 @@
       return null;
     };
 
-    ShoveMockServer.prototype.process = function(msg, options) {
-      var channel, frame, network, response, _opcode, _ref;
+    ShoveMockServer.prototype.process = function(msg) {
+      var channel, frame, response, _opcode, _ref;
       if (msg == null) msg = "{}";
-      if (options == null) {
-        options = {
-          network: ""
-        };
-      }
+      console.log("ShoveMockServer:process", msg);
       frame = JSON.parse(msg);
-      network = this.findNetwork(options.network);
-      if (!network) return null;
       if (_ref = !'opcode', __indexOf.call(frame, _ref) >= 0) return null;
       response = {
         opcode: ERROR,
@@ -699,18 +703,17 @@
       };
       if (frame.opcode !== CONNECT) {
         if (__indexOf.call(frame, channel) < 0) return null;
-        channel = network.findChannel(frame.channel);
+        channel = this.effectiveNetwork.findChannel(frame.channel);
       }
       console.log("frame:", frame);
-      console.log(this);
-      console.log(this.hasClient(this.client));
-      console.log(network.hasClient(this.client));
       switch (frame.opcode) {
         case CONNECT:
           console.log("CONNECT");
-          this.client = this.server.addClient(frame.id);
+          if (__indexOf.call(frame, 'data') >= 0 && frame.data.length > 0) {
+            this.effectiveClient.setId(frame.data);
+          }
           response.opcode = CONNECT_GRANTED;
-          response.data = this.client.id;
+          response.data = this.effectiveClient.id;
           break;
         case SUBSCRIBE:
           console.log("SUBSCRIBE");
@@ -750,7 +753,8 @@
       }
       _opcode = response.opcode.toString(16);
       console.log("response:", _opcode, response);
-      return response;
+      console.log("/ShoveMockServer:process");
+      return JSON.stringify(response);
     };
 
     return ShoveMockServer;
@@ -760,28 +764,43 @@
   MockSocket = (function() {
 
     function MockSocket() {
-      var app, protocols, url, urlMatches, urlReg;
+      var network, protocols, url, urlMatches, urlReg;
       url = arguments[0], protocols = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
       this.url = url;
       this.protocols = protocols;
       this.extensions = "";
       this.protocol = "";
-      this.readyState = 0;
+      this.readyState = this.state('connecting');
       this.bufferedAmount = 0;
       urlReg = /^([\w\d]+):\/\/([^\/]+)\/([^\/]+)(.*?)$/gi;
       urlMatches = urlReg.exec(this.url);
-      app = urlMatches[3];
+      this.app = urlMatches[3];
       this.server = new ShoveMockServer();
-      this.network = this.server.addNetwork(app);
-      this.onopen();
+      network = this.server.addNetwork(this.app);
+      this.server.setEffectiveNetwork(network);
       this;
     }
 
     MockSocket.prototype.close = function(code, reason) {
       if (code == null) code = 0;
       if (reason == null) reason = "";
-      this.readyState = 3;
-      return this.onclose();
+      this.readyState = this.state('closing');
+      this.onclose();
+      return null;
+    };
+
+    MockSocket.prototype.state = function(str) {
+      switch (str) {
+        case 'connecting':
+          return 0;
+        case 'open':
+          return 1;
+        case 'closing':
+          return 2;
+        case 'closed':
+          return 3;
+      }
+      return null;
     };
 
     MockSocket.prototype.onopen = function() {};
@@ -793,10 +812,23 @@
     MockSocket.prototype.onmessage = function() {};
 
     MockSocket.prototype.send = function(msg) {
-      this.onmessage(this.server.process(msg, {
-        network: this.network.name
-      }));
-      return this;
+      var connect_response, frame;
+      if (msg == null) msg = "{}";
+      if (this.readyState === this.state('open')) {
+        this.onmessage(this.server.process(msg));
+        return this;
+      }
+      frame = JSON.parse(msg);
+      if (frame.opcode) {
+        if (frame.opcode === CONNECT) {
+          connect_response = JSON.parse(this.server.process(msg));
+          if (connect_response.opcode === CONNECT_GRANTED) {
+            this.readyState = this.state('open');
+            this.onopen();
+          }
+        }
+      }
+      return null;
     };
 
     return MockSocket;

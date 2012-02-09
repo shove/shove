@@ -101,7 +101,7 @@ class Transport
   # Process the message event
   process: (msg) ->
     console.log("Transport:process",msg)
-    @dispatch("message", @decode(msg.data))
+    @dispatch("message", @decode(msg))
   
   # Connected handler
   connected: (e) ->
@@ -174,9 +174,9 @@ class WebSocketTransport extends Transport
       return
        
     @dispatch("connecting")
-    
-    @transmit(JSON.stringify({opcode:CONNECT,id:id}))
-    
+
+    @transmit(JSON.stringify({opcode:CONNECT,data:id}))
+
     @forcedc = false
       
     

@@ -5,6 +5,10 @@
 
 class ShoveMockClient
   constructor: (@id = -1) ->
+  
+  setId: (id) ->
+    @id = id
+    this
 
 
 
@@ -89,6 +93,9 @@ class ShoveMockServer
   constructor: () ->
     @networks = []
     @clients = []
+    
+    @effectiveNetwork = null
+    @effectiveClient = @addClient()
 
   addNetwork: (name) ->
     network = new ShoveMockNetwork(name)
@@ -106,6 +113,9 @@ class ShoveMockServer
       if network.name == name
         return network
     return null
+  
+  setEffectiveNetwork: (@effectiveNetwork) ->
+    null
 
   addClient: (id = @generateClientId()) ->
     client = new ShoveMockClient(id)
@@ -113,7 +123,7 @@ class ShoveMockServer
     client
 
   generateClientId: () ->
-    if ! i in @generateClientId
+    if !@generateClientId.i
       @generateClientId.i = 0
     return "client" + @generateClientId.i++
 
@@ -129,13 +139,10 @@ class ShoveMockServer
         return client
     return null
   
-  process: (msg = "{}",options = {network:""}) ->
+  process: (msg = "{}") ->
+    console.log("ShoveMockServer:process",msg)
     frame = JSON.parse(msg)
-    network = @findNetwork(options.network)
 
-    if ! network
-      return null
-    
     if ! 'opcode' in frame
       return null
     
@@ -147,22 +154,18 @@ class ShoveMockServer
     if frame.opcode != CONNECT
       unless channel in frame
         return null
-      channel = network.findChannel(frame.channel)
+      channel = @effectiveNetwork.findChannel(frame.channel)
 
     console.log("frame:",frame)
-    console.log(@)
-    console.log(@hasClient(@client))
-    console.log(network.hasClient(@client))
-
 
     switch frame.opcode
       
       when CONNECT
         console.log("CONNECT")
-        @client = @server.addClient(frame.id)
-        
+        if 'data' in frame and frame.data.length > 0
+          @effectiveClient.setId(frame.data)
         response.opcode = CONNECT_GRANTED
-        response.data = @client.id
+        response.data = @effectiveClient.id
       
       when SUBSCRIBE
         console.log("SUBSCRIBE")
@@ -199,7 +202,8 @@ class ShoveMockServer
 
     _opcode = response.opcode.toString(16)
     console.log("response:",_opcode,response)
-    return response
+    console.log("/ShoveMockServer:process")
+    return JSON.stringify(response)
 
 
   
@@ -208,35 +212,37 @@ class ShoveMockServer
 
 
 class MockSocket
-  # @CONNECTING = 0
-  # @OPEN = 1
-  # @CLOSING = 2
-  # @CLOSED = 3
-  
-  
 
   constructor: (@url,@protocols...) ->
     @extensions = ""
     @protocol = ""
-    # @readyState = MockSocket.CONNECTING
-    @readyState = 0;
+    @readyState = @state('connecting')
     @bufferedAmount = 0
     
     urlReg = /^([\w\d]+):\/\/([^\/]+)\/([^\/]+)(.*?)$/gi
     urlMatches = urlReg.exec(@url)
     
-    app = urlMatches[3]
+    @app = urlMatches[3]
 
-    # Fake server responses
+    # Seed ShoveMockServer
     @server = new ShoveMockServer()
-    @network = @server.addNetwork(app)
-    @onopen()
+    network = @server.addNetwork(@app)
+    @server.setEffectiveNetwork(network)
     this
 
   close: (code = 0,reason = "") ->
-    # @readyState = MockSocket.CLOSED
-    @readyState = 3
+    @readyState = @state('closing')
     @onclose()
+    null
+  
+  state: (str) ->
+    switch str
+      when 'connecting' then return 0
+      when 'open' then return 1
+      when 'closing' then return 2
+      when 'closed' then return 3
+    return null
+
 
   onopen: () ->
     
@@ -246,6 +252,20 @@ class MockSocket
     
   onmessage: () ->
     
-  send: (msg) ->
-    @onmessage(@server.process(msg,{network:@network.name}))
-    this
+  send: (msg ="{}") ->
+    # console.log("MockSocket:send",msg)
+    if @readyState == @state('open')
+      @onmessage(@server.process(msg))
+      return this
+    
+    frame = JSON.parse(msg)
+    
+    if frame.opcode
+      if frame.opcode == CONNECT
+        connect_response = JSON.parse(@server.process(msg))
+        if connect_response.opcode == CONNECT_GRANTED
+          @readyState = @state('open')
+          @onopen()
+
+    # console.log("/MockSocket:send")
+    null
