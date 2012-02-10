@@ -61,6 +61,7 @@ class Client
     @listeners = {}
     @channels = {}
     @authorized = false
+    @app_key = ''
     
   # Connect to an app
   # `app` The name of the app
@@ -94,9 +95,12 @@ class Client
   # currently subscribed
   # `name` The name of the channel
   channel: (name) ->
-    unless @channels[name]
-      @channels[name] = new Channel(name, @socket)
-    @channels[name]
+    unless channel = @channels[name]
+      channel = new Channel(name, @socket)
+      @channels[name] = channel
+      @trigger("subscribing",{})
+      channel.subscribe()
+    channel
 
   # Add a app event listener
   # `event` The name of the event
@@ -125,12 +129,11 @@ class Client
 
   # Self authorize to permit all
   # actions on the connection
-  # `key` the api key for the app
-  authorize: (key) ->
+  authorize: () ->
     @socket.send({
       opcode: AUTHORIZE,
       channel: "*",
-      data: key
+      data: @app_key
     })
     this
 
@@ -138,16 +141,16 @@ class Client
 
   # Process a shove message
   process: (e) ->
-    console.log("Client:process",e)
+    console.log("Shove:process",e)
     chan = @channels[e.channel]
     switch e.opcode
       when CONNECT_GRANTED then @id = e.data
-      when SUBSCRIBE_GRANTED then chan.transition("subscribed")
-      when UNSUBSCRIBE_COMPLETE then chan.transition("unsubscribed")
-      when SUBSCRIBE_DENIED then chan.transition("unauthorized")
-      when PUBLISH then chan.process(e.data)
+      when SUBSCRIBE_GRANTED then chan.trigger("subscribe",e)
+      when UNSUBSCRIBE_COMPLETE then chan.trigger("unsubscribe",e)
+      when SUBSCRIBE_DENIED then chan.trigger("unauthorize",e)
+      when PUBLISH then chan.process(e)
       when AUTHORIZE_GRANTED then @authorized = true
-      when ERROR then console.log(e.data)
+      when ERROR then console.error(e.data)
       else
         return
     @trigger(e.event, e.data)
@@ -163,7 +166,7 @@ class Client
     for name, channel of @channels
       channel.subscribe()
     @trigger("reconnect")
-        
+
 # Create the global Shove object
 window.$shove = new Client()
 

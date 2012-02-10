@@ -42,7 +42,7 @@ class ShoveMockChannel
 
 
 class ShoveMockNetwork
-  constructor: (@name) ->
+  constructor: (@name,@networkKey = '') ->
     @channels = []
     @clients = []
     @authorizers = []
@@ -50,6 +50,8 @@ class ShoveMockNetwork
   addChannel: (name) ->
     channel = new ShoveMockChannel(name)
     @channels.push(channel)
+    for a in @authorizers
+      channel.addPublisher(a)
     channel
 
   removeChannel: (channel) ->
@@ -79,13 +81,21 @@ class ShoveMockNetwork
     unless @hasClient(client)
       @addClient(client)
     @authorizers.push(client)
+    for c in @channels
+      c.addPublisher(client)
     this
 
   removeAuthorizer: (client) ->
     @authorizers.splice(@authorizers.indexOf(client),1)
+    for c in @channels
+      c.removePublisher(client)
 
   hasAuthorizer: (client) ->
     @authorizers.indexOf(client) >= 0
+  
+  checkNetworkKey: (key) ->
+    # return @networkKey === key
+    return !! key.length
 
 
 
@@ -143,20 +153,19 @@ class ShoveMockServer
     console.log("ShoveMockServer:process",msg)
     frame = JSON.parse(msg)
 
+
     if ! 'opcode' in frame
-      return null
+      frame.opcode = 0
+    
+    console.log(frame.opcode.toString(16))
     
     response = {
       opcode: ERROR
       data: ""
     }
 
-    if frame.opcode != CONNECT
-      unless channel in frame
-        return null
+    if ! frame.opcode in [CONNECT,AUTHORIZE]
       channel = @effectiveNetwork.findChannel(frame.channel)
-
-    console.log("frame:",frame)
 
     switch frame.opcode
       
@@ -169,28 +178,27 @@ class ShoveMockServer
       
       when SUBSCRIBE
         console.log("SUBSCRIBE")
-        if ! @network.hasChannel(channel)
-          response.opcode = SUBSCRIBE_DENIED
-          response.data = "channel does not exist on the connected network"
-        else
-          channel.addSubscriber(@client)
-          response.opcode = SUBSCRIBE_COMPLETE
+        if ! @effectiveNetwork.hasChannel(channel)
+          channel = @effectiveNetwork.addChannel(frame.channel)
+        channel.addSubscriber(@effectiveClient)
+        response.channel = frame.channel
+        response.opcode = SUBSCRIBE_GRANTED
       
       when UNSUBSCRIBE
         console.log("UNSUBSCRIBE")
-        if ! @network.hasChannel(channel)
+        if ! @effectiveNetwork.hasChannel(channel)
           response.data = "channel does not exist on the connected network"
-        else if ! @channel.hasSubscriber(@client)
+        else if ! @channel.hasSubscriber(@effectiveClient)
           response.data = "you weren't subscribed to the channel in the first place"
         else
-          channel.removeSubscriber(@client)
-          response.opcode = UNSUBSCRIBE_COMPLETE
+          channel.removeSubscriber(@effectiveClient)
+          response.opcode = UNSUBSCRIBE_GRANTED
       
       when PUBLISH
         console.log("PUBLISH")
-        if ! @network.hasChannel(channel)
+        if ! @effectiveNetwork.hasChannel(channel)
           response.data = "channel does not exist on the connected network"
-        else if ! channel.hasPublisher(@clientId)
+        else if ! channel.hasPublisher(@effectiveClient)
           response.opcode = PUBLISH_DENIED
           response.data = "you do not have publishing priviledges on this channel"
         else
@@ -198,7 +206,15 @@ class ShoveMockServer
 
       when AUTHORIZE
         console.log("AUTHORIZE")
-        response.opcode = AUTHORIZE_COMPLETE
+        if @effectiveNetwork.checkNetworkKey(frame.data)
+          response.opcode = AUTHORIZE_GRANTED
+          @effectiveNetwork.addAuthorizer(@effectiveClient)
+        else
+          response.opcode = AUTHORIZE_DENIED
+      
+      when ERROR
+        console.log("ERROR")
+        response.data = "why you error dog?"
 
     _opcode = response.opcode.toString(16)
     console.log("response:",_opcode,response)
@@ -253,7 +269,6 @@ class MockSocket
   onmessage: () ->
     
   send: (msg ="{}") ->
-    # console.log("MockSocket:send",msg)
     if @readyState == @state('open')
       @onmessage(@server.process(msg))
       return this
@@ -267,5 +282,4 @@ class MockSocket
           @readyState = @state('open')
           @onopen()
 
-    # console.log("/MockSocket:send")
     null

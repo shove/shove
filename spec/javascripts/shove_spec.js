@@ -41,7 +41,8 @@ describe("$shove", function() {
     
     it("should authorize", function() {
       // authorize admin
-      $shove.authorize("test");
+      $shove.app_key = 'test-app_key'
+      $shove.authorize();
 
       waitsFor(function() {
         return $shove.authorized;
@@ -50,7 +51,7 @@ describe("$shove", function() {
 
     it("should subscribe to a channel", function() {
 
-      channel = $shove.channel("publish").on("*", function(e) {
+      channel = $shove.channel("publish").on("message", function(e) {
         messages.push(e);
       });
 

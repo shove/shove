@@ -93,7 +93,6 @@
     };
 
     Transport.prototype.process = function(msg) {
-      console.log("Transport:process", msg);
       return this.dispatch("message", this.decode(msg));
     };
 
@@ -190,32 +189,56 @@
   Channel = (function() {
 
     function Channel(name, transport) {
+      var _this = this;
       this.name = name;
       this.transport = transport;
       this.events = {
-        "message": []
+        "message": [],
+        "subscribing": [],
+        "subscribe": [],
+        "unsubscribe": [],
+        "unauthorize": []
       };
       this.filters = [];
       this.state = "unsubscribed";
+      this.on("subscribing", function(e) {
+        return _this.state = "subscribing";
+      });
+      this.on("subscribe", function(e) {
+        return _this.state = "subscribed";
+      });
+      this.on("unsubscribe", function(e) {
+        return _this.state = "unsubscribed";
+      });
+      this.on("unauthorize", function(e) {
+        return _this.state = "unauthorized";
+      });
+      this;
     }
 
-    Channel.prototype.transition = function(state) {
-      this.state = state;
-      return this.process(state);
-    };
-
     Channel.prototype.on = function(event, cb) {
-      if (!this.events[event]) this.events[event] = [];
+      if (!this.events.hasOwnProperty(event)) {
+        console.error("Illegal event '" + event + "' defined on shove channel");
+      }
       this.events[event].push(cb);
       return this;
     };
 
-    Channel.prototype.process = function(message, user) {
-      var e, filter, sub, subs, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
-      e = {
-        data: message,
-        user: user
-      };
+    Channel.prototype.trigger = function(event, e) {
+      var cb, _i, _len, _ref;
+      if (e == null) e = {};
+      if (this.events.hasOwnProperty(event)) {
+        _ref = this.events[event];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          cb = _ref[_i];
+          cb(e);
+        }
+      }
+      return this;
+    };
+
+    Channel.prototype.process = function(e) {
+      var filter, _i, _len, _ref;
       if (this.filters.length > 0) {
         _ref = this.filters;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -224,20 +247,7 @@
           if (e === false) return this;
         }
       }
-      if (event !== "*") {
-        subs = this.events[event];
-        if (subs) {
-          for (_j = 0, _len2 = subs.length; _j < _len2; _j++) {
-            sub = subs[_j];
-            sub(e);
-          }
-        }
-      }
-      _ref2 = this.events["*"];
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        sub = _ref2[_k];
-        sub(e);
-      }
+      this.trigger("message", e);
       return this;
     };
 
@@ -345,6 +355,7 @@
       this.listeners = {};
       this.channels = {};
       this.authorized = false;
+      this.app_key = '';
     }
 
     Client.prototype.connect = function(app, opts) {
@@ -388,10 +399,14 @@
     };
 
     Client.prototype.channel = function(name) {
-      if (!this.channels[name]) {
-        this.channels[name] = new Channel(name, this.socket);
+      var channel;
+      if (!(channel = this.channels[name])) {
+        channel = new Channel(name, this.socket);
+        this.channels[name] = channel;
+        this.trigger("subscribing", {});
+        channel.subscribe();
       }
-      return this.channels[name];
+      return channel;
     };
 
     Client.prototype.on = function(event, cb) {
@@ -413,11 +428,11 @@
       return this;
     };
 
-    Client.prototype.authorize = function(key) {
+    Client.prototype.authorize = function() {
       this.socket.send({
         opcode: AUTHORIZE,
         channel: "*",
-        data: key
+        data: this.app_key
       });
       return this;
     };
@@ -428,29 +443,29 @@
 
     Client.prototype.process = function(e) {
       var chan;
-      console.log("Client:process", e);
+      console.log("Shove:process", e);
       chan = this.channels[e.channel];
       switch (e.opcode) {
         case CONNECT_GRANTED:
           this.id = e.data;
           break;
         case SUBSCRIBE_GRANTED:
-          chan.transition("subscribed");
+          chan.trigger("subscribe", e);
           break;
         case UNSUBSCRIBE_COMPLETE:
-          chan.transition("unsubscribed");
+          chan.trigger("unsubscribe", e);
           break;
         case SUBSCRIBE_DENIED:
-          chan.transition("unauthorized");
+          chan.trigger("unauthorize", e);
           break;
         case PUBLISH:
-          chan.process(e.data);
+          chan.process(e);
           break;
         case AUTHORIZE_GRANTED:
           this.authorized = true;
           break;
         case ERROR:
-          console.log(e.data);
+          console.error(e.data);
           break;
         default:
           return;
@@ -557,17 +572,23 @@
 
   ShoveMockNetwork = (function() {
 
-    function ShoveMockNetwork(name) {
+    function ShoveMockNetwork(name, networkKey) {
       this.name = name;
+      this.networkKey = networkKey != null ? networkKey : '';
       this.channels = [];
       this.clients = [];
       this.authorizers = [];
     }
 
     ShoveMockNetwork.prototype.addChannel = function(name) {
-      var channel;
+      var a, channel, _i, _len, _ref;
       channel = new ShoveMockChannel(name);
       this.channels.push(channel);
+      _ref = this.authorizers;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        a = _ref[_i];
+        channel.addPublisher(a);
+      }
       return channel;
     };
 
@@ -604,17 +625,35 @@
     };
 
     ShoveMockNetwork.prototype.addAuthorizer = function(client) {
+      var c, _i, _len, _ref;
       if (!this.hasClient(client)) this.addClient(client);
       this.authorizers.push(client);
+      _ref = this.channels;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        c = _ref[_i];
+        c.addPublisher(client);
+      }
       return this;
     };
 
     ShoveMockNetwork.prototype.removeAuthorizer = function(client) {
-      return this.authorizers.splice(this.authorizers.indexOf(client), 1);
+      var c, _i, _len, _ref, _results;
+      this.authorizers.splice(this.authorizers.indexOf(client), 1);
+      _ref = this.channels;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        c = _ref[_i];
+        _results.push(c.removePublisher(client));
+      }
+      return _results;
     };
 
     ShoveMockNetwork.prototype.hasAuthorizer = function(client) {
       return this.authorizers.indexOf(client) >= 0;
+    };
+
+    ShoveMockNetwork.prototype.checkNetworkKey = function(key) {
+      return !!key.length;
     };
 
     return ShoveMockNetwork;
@@ -692,20 +731,19 @@
     };
 
     ShoveMockServer.prototype.process = function(msg) {
-      var channel, frame, response, _opcode, _ref;
+      var channel, frame, response, _opcode, _ref, _ref2;
       if (msg == null) msg = "{}";
       console.log("ShoveMockServer:process", msg);
       frame = JSON.parse(msg);
-      if (_ref = !'opcode', __indexOf.call(frame, _ref) >= 0) return null;
+      if (_ref = !'opcode', __indexOf.call(frame, _ref) >= 0) frame.opcode = 0;
+      console.log(frame.opcode.toString(16));
       response = {
         opcode: ERROR,
         data: ""
       };
-      if (frame.opcode !== CONNECT) {
-        if (__indexOf.call(frame, channel) < 0) return null;
+      if ((_ref2 = !frame.opcode) === CONNECT || _ref2 === AUTHORIZE) {
         channel = this.effectiveNetwork.findChannel(frame.channel);
       }
-      console.log("frame:", frame);
       switch (frame.opcode) {
         case CONNECT:
           console.log("CONNECT");
@@ -717,30 +755,29 @@
           break;
         case SUBSCRIBE:
           console.log("SUBSCRIBE");
-          if (!this.network.hasChannel(channel)) {
-            response.opcode = SUBSCRIBE_DENIED;
-            response.data = "channel does not exist on the connected network";
-          } else {
-            channel.addSubscriber(this.client);
-            response.opcode = SUBSCRIBE_COMPLETE;
+          if (!this.effectiveNetwork.hasChannel(channel)) {
+            channel = this.effectiveNetwork.addChannel(frame.channel);
           }
+          channel.addSubscriber(this.effectiveClient);
+          response.channel = frame.channel;
+          response.opcode = SUBSCRIBE_GRANTED;
           break;
         case UNSUBSCRIBE:
           console.log("UNSUBSCRIBE");
-          if (!this.network.hasChannel(channel)) {
+          if (!this.effectiveNetwork.hasChannel(channel)) {
             response.data = "channel does not exist on the connected network";
-          } else if (!this.channel.hasSubscriber(this.client)) {
+          } else if (!this.channel.hasSubscriber(this.effectiveClient)) {
             response.data = "you weren't subscribed to the channel in the first place";
           } else {
-            channel.removeSubscriber(this.client);
-            response.opcode = UNSUBSCRIBE_COMPLETE;
+            channel.removeSubscriber(this.effectiveClient);
+            response.opcode = UNSUBSCRIBE_GRANTED;
           }
           break;
         case PUBLISH:
           console.log("PUBLISH");
-          if (!this.network.hasChannel(channel)) {
+          if (!this.effectiveNetwork.hasChannel(channel)) {
             response.data = "channel does not exist on the connected network";
-          } else if (!channel.hasPublisher(this.clientId)) {
+          } else if (!channel.hasPublisher(this.effectiveClient)) {
             response.opcode = PUBLISH_DENIED;
             response.data = "you do not have publishing priviledges on this channel";
           } else {
@@ -749,7 +786,16 @@
           break;
         case AUTHORIZE:
           console.log("AUTHORIZE");
-          response.opcode = AUTHORIZE_COMPLETE;
+          if (this.effectiveNetwork.checkNetworkKey(frame.data)) {
+            response.opcode = AUTHORIZE_GRANTED;
+            this.effectiveNetwork.addAuthorizer(this.effectiveClient);
+          } else {
+            response.opcode = AUTHORIZE_DENIED;
+          }
+          break;
+        case ERROR:
+          console.log("ERROR");
+          response.data = "why you error dog?";
       }
       _opcode = response.opcode.toString(16);
       console.log("response:", _opcode, response);

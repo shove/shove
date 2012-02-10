@@ -100,7 +100,6 @@ class Transport
           
   # Process the message event
   process: (msg) ->
-    console.log("Transport:process",msg)
     @dispatch("message", @decode(msg))
   
   # Connected handler

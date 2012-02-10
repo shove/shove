@@ -9,15 +9,20 @@ class Channel
   constructor: (@name, @transport) ->
     @events = {
       "message": []
+      "subscribing": []
+      "subscribe": []
+      "unsubscribe": []
+      "unauthorize": []
     }
     @filters = []
     @state = "unsubscribed"
+    
+    @on("subscribing",(e) => @state = "subscribing")
+    @on("subscribe",(e) => @state = "subscribed")
+    @on("unsubscribe",(e) => @state = "unsubscribed")
+    @on("unauthorize",(e) => @state = "unauthorized")
 
-  # Set the state for the channel
-  # `state` the state name
-  transition: (state) ->
-    @state = state
-    @process(state)
+    this
 
   # Bind a function to an event
   # The function will be called when
@@ -26,38 +31,32 @@ class Channel
   # `event` the event to trigger on
   # `cb` the callback to execute on trigger
   on: (event, cb) ->
-    unless @events[event]
-      @events[event] = []
+    if ! @events.hasOwnProperty(event)
+      console.error("Illegal event '#{event}' defined on shove channel")
     @events[event].push(cb)
+    this
+  
+  trigger: (event,e = {}) ->
+    if @events.hasOwnProperty(event)
+      for cb in @events[event]
+        cb(e)
     this
 
   
   # Process an event to all bound listeners
-  # `event` the event name
   # `message` the data package
-  # `user` the user it's from
-  process: (message, user) ->
-    e = {
-      data: message,
-      user: user
-    }
-    
+  process: (e) ->
     if @filters.length > 0
       for filter in @filters
         e = filter(e)
         if e == false
           return this
-
-    unless event == "*"
-      subs = @events[event]
-      if subs
-        for sub in subs
-          sub(e)
-
-    for sub in @events["*"]
-      sub(e)
     
+    @trigger("message",e)
+        
     this
+  
+  
     
   # Publish an event and message on this
   # channel
