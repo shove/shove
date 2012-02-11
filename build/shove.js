@@ -443,7 +443,6 @@
 
     Client.prototype.process = function(e) {
       var chan;
-      console.log("Shove:process", e);
       chan = this.channels[e.channel];
       switch (e.opcode) {
         case CONNECT_GRANTED:
@@ -611,7 +610,13 @@
     };
 
     ShoveMockNetwork.prototype.addClient = function(client) {
+      var channelName, directChannel;
       this.clients.push(client);
+      channelName = "direct:" + client.id;
+      if (!(directChannel = this.findChannel(channelName))) {
+        directChannel = this.addChannel(channelName);
+      }
+      directChannel.addSubscriber(client);
       return this;
     };
 
@@ -731,7 +736,7 @@
     };
 
     ShoveMockServer.prototype.process = function(msg) {
-      var channel, frame, response, _opcode, _ref, _ref2;
+      var chan, frame, response, _opcode, _ref;
       if (msg == null) msg = "{}";
       console.log("ShoveMockServer:process", msg);
       frame = JSON.parse(msg);
@@ -741,9 +746,6 @@
         opcode: ERROR,
         data: ""
       };
-      if ((_ref2 = !frame.opcode) === CONNECT || _ref2 === AUTHORIZE) {
-        channel = this.effectiveNetwork.findChannel(frame.channel);
-      }
       switch (frame.opcode) {
         case CONNECT:
           console.log("CONNECT");
@@ -755,31 +757,35 @@
           break;
         case SUBSCRIBE:
           console.log("SUBSCRIBE");
-          if (!this.effectiveNetwork.hasChannel(channel)) {
-            channel = this.effectiveNetwork.addChannel(frame.channel);
-          }
-          channel.addSubscriber(this.effectiveClient);
-          response.channel = frame.channel;
+          chan = this.effectiveNetwork.findChannel(frame.channel);
+          if (!chan) chan = this.effectiveNetwork.addChannel(frame.channel);
+          chan.addSubscriber(this.effectiveClient);
+          response.channel = chan.name;
           response.opcode = SUBSCRIBE_GRANTED;
           break;
         case UNSUBSCRIBE:
           console.log("UNSUBSCRIBE");
-          if (!this.effectiveNetwork.hasChannel(channel)) {
+          chan = this.effectiveNetwork.findChannel(frame.channel);
+          if (!chan) {
             response.data = "channel does not exist on the connected network";
-          } else if (!this.channel.hasSubscriber(this.effectiveClient)) {
+          } else if (!chan.hasSubscriber(this.effectiveClient)) {
             response.data = "you weren't subscribed to the channel in the first place";
           } else {
-            channel.removeSubscriber(this.effectiveClient);
-            response.opcode = UNSUBSCRIBE_GRANTED;
+            chan.removeSubscriber(this.effectiveClient);
+            response.channel = chan.name;
+            response.opcode = UNSUBSCRIBE_COMPLETE;
           }
           break;
         case PUBLISH:
           console.log("PUBLISH");
-          if (!this.effectiveNetwork.hasChannel(channel)) {
+          chan = this.effectiveNetwork.findChannel(frame.channel);
+          if (!chan) {
             response.data = "channel does not exist on the connected network";
-          } else if (!channel.hasPublisher(this.effectiveClient)) {
+          } else if (!chan.hasPublisher(this.effectiveClient)) {
             response.opcode = PUBLISH_DENIED;
             response.data = "you do not have publishing priviledges on this channel";
+          } else if (!chan.hasSubscriber(this.effectiveClient)) {
+            return null;
           } else {
             response = frame;
           }
@@ -858,10 +864,11 @@
     MockSocket.prototype.onmessage = function() {};
 
     MockSocket.prototype.send = function(msg) {
-      var connect_response, frame;
+      var connect_response, frame, response;
       if (msg == null) msg = "{}";
       if (this.readyState === this.state('open')) {
-        this.onmessage(this.server.process(msg));
+        response = this.server.process(msg);
+        if (response !== null) this.onmessage(response);
         return this;
       }
       frame = JSON.parse(msg);

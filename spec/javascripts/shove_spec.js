@@ -41,7 +41,7 @@ describe("$shove", function() {
     
     it("should authorize", function() {
       // authorize admin
-      $shove.app_key = 'test-app_key'
+      $shove.app_key = 'test'
       $shove.authorize();
 
       waitsFor(function() {

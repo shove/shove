@@ -68,6 +68,10 @@ class ShoveMockNetwork
 
   addClient: (client) ->
     @clients.push(client)
+    channelName = "direct:#{client.id}"
+    if ! directChannel = @findChannel(channelName)
+      directChannel = @addChannel(channelName)
+    directChannel.addSubscriber(client)
     this
 
   removeClient: (client) ->
@@ -164,9 +168,6 @@ class ShoveMockServer
       data: ""
     }
 
-    if ! frame.opcode in [CONNECT,AUTHORIZE]
-      channel = @effectiveNetwork.findChannel(frame.channel)
-
     switch frame.opcode
       
       when CONNECT
@@ -178,29 +179,35 @@ class ShoveMockServer
       
       when SUBSCRIBE
         console.log("SUBSCRIBE")
-        if ! @effectiveNetwork.hasChannel(channel)
-          channel = @effectiveNetwork.addChannel(frame.channel)
-        channel.addSubscriber(@effectiveClient)
-        response.channel = frame.channel
+        chan = @effectiveNetwork.findChannel(frame.channel)
+        if ! chan
+          chan = @effectiveNetwork.addChannel(frame.channel)
+        chan.addSubscriber(@effectiveClient)
+        response.channel = chan.name
         response.opcode = SUBSCRIBE_GRANTED
       
       when UNSUBSCRIBE
         console.log("UNSUBSCRIBE")
-        if ! @effectiveNetwork.hasChannel(channel)
+        chan = @effectiveNetwork.findChannel(frame.channel)
+        if ! chan
           response.data = "channel does not exist on the connected network"
-        else if ! @channel.hasSubscriber(@effectiveClient)
+        else if ! chan.hasSubscriber(@effectiveClient)
           response.data = "you weren't subscribed to the channel in the first place"
         else
-          channel.removeSubscriber(@effectiveClient)
-          response.opcode = UNSUBSCRIBE_GRANTED
+          chan.removeSubscriber(@effectiveClient)
+          response.channel = chan.name
+          response.opcode = UNSUBSCRIBE_COMPLETE
       
       when PUBLISH
         console.log("PUBLISH")
-        if ! @effectiveNetwork.hasChannel(channel)
+        chan = @effectiveNetwork.findChannel(frame.channel)
+        if ! chan
           response.data = "channel does not exist on the connected network"
-        else if ! channel.hasPublisher(@effectiveClient)
+        else if ! chan.hasPublisher(@effectiveClient)
           response.opcode = PUBLISH_DENIED
           response.data = "you do not have publishing priviledges on this channel"
+        else if ! chan.hasSubscriber(@effectiveClient)
+          return null
         else
           response = frame
 
@@ -244,6 +251,7 @@ class MockSocket
     @server = new ShoveMockServer()
     network = @server.addNetwork(@app)
     @server.setEffectiveNetwork(network)
+    
     this
 
   close: (code = 0,reason = "") ->
@@ -270,7 +278,9 @@ class MockSocket
     
   send: (msg ="{}") ->
     if @readyState == @state('open')
-      @onmessage(@server.process(msg))
+      response = @server.process(msg)
+      if response != null
+        @onmessage(response)
       return this
     
     frame = JSON.parse(msg)

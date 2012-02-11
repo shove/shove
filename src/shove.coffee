@@ -141,7 +141,6 @@ class Client
 
   # Process a shove message
   process: (e) ->
-    console.log("Shove:process",e)
     chan = @channels[e.channel]
     switch e.opcode
       when CONNECT_GRANTED then @id = e.data
