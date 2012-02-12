@@ -6,11 +6,12 @@
 
 class Channel
 
-  constructor: (@name, @transport) ->
+  constructor: (@name, @transport,triggers = {}) ->
     @events = {
       "message": []
       "subscribing": []
       "subscribe": []
+      "unsubscribing": []
       "unsubscribe": []
       "unauthorize": []
     }
@@ -21,6 +22,15 @@ class Channel
     @on("subscribe",(e) => @state = "subscribed")
     @on("unsubscribe",(e) => @state = "unsubscribed")
     @on("unauthorize",(e) => @state = "unauthorized")
+    
+    # Allow user to attach triggers to channel
+    # before channel starts sending messages
+    # to Shove (eg. subscribe())
+    for event of triggers
+      for callback in triggers[event]
+        @on(event,callback)
+    
+    @subscribe()
 
     this
 
@@ -71,6 +81,7 @@ class Channel
 
   # Unsubscribe from this channel
   unsubscribe: ->
+    @trigger("unsubscribing")
     @transport.send({
       opcode: UNSUBSCRIBE,
       channel: @name
@@ -78,6 +89,7 @@ class Channel
 
   # Register this channel with shove
   subscribe: ->
+    @trigger("subscribing")
     @transport.send({
       opcode: SUBSCRIBE,
       channel: @name

@@ -188,14 +188,17 @@
 
   Channel = (function() {
 
-    function Channel(name, transport) {
-      var _this = this;
+    function Channel(name, transport, triggers) {
+      var callback, event, _i, _len, _ref,
+        _this = this;
       this.name = name;
       this.transport = transport;
+      if (triggers == null) triggers = {};
       this.events = {
         "message": [],
         "subscribing": [],
         "subscribe": [],
+        "unsubscribing": [],
         "unsubscribe": [],
         "unauthorize": []
       };
@@ -213,6 +216,14 @@
       this.on("unauthorize", function(e) {
         return _this.state = "unauthorized";
       });
+      for (event in triggers) {
+        _ref = triggers[event];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          callback = _ref[_i];
+          this.on(event, callback);
+        }
+      }
+      this.subscribe();
       this;
     }
 
@@ -260,6 +271,7 @@
     };
 
     Channel.prototype.unsubscribe = function() {
+      this.trigger("unsubscribing");
       return this.transport.send({
         opcode: UNSUBSCRIBE,
         channel: this.name
@@ -267,6 +279,7 @@
     };
 
     Channel.prototype.subscribe = function() {
+      this.trigger("subscribing");
       return this.transport.send({
         opcode: SUBSCRIBE,
         channel: this.name
@@ -399,12 +412,17 @@
     };
 
     Client.prototype.channel = function(name) {
-      var channel;
+      var channel,
+        _this = this;
       if (!(channel = this.channels[name])) {
-        channel = new Channel(name, this.socket);
+        channel = new Channel(name, this.socket, {
+          'subscribing': [
+            (function(e) {
+              return _this.trigger("subscribing", {});
+            })
+          ]
+        });
         this.channels[name] = channel;
-        this.trigger("subscribing", {});
-        channel.subscribe();
       }
       return channel;
     };
@@ -864,11 +882,16 @@
     MockSocket.prototype.onmessage = function() {};
 
     MockSocket.prototype.send = function(msg) {
-      var connect_response, frame, response;
+      var connect_response, frame, response,
+        _this = this;
       if (msg == null) msg = "{}";
       if (this.readyState === this.state('open')) {
         response = this.server.process(msg);
-        if (response !== null) this.onmessage(response);
+        if (response !== null) {
+          window.setTimeout((function() {
+            return _this.onmessage(response);
+          }), 10);
+        }
         return this;
       }
       frame = JSON.parse(msg);

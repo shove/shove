@@ -280,7 +280,7 @@ class MockSocket
     if @readyState == @state('open')
       response = @server.process(msg)
       if response != null
-        @onmessage(response)
+        window.setTimeout((() => @onmessage(response)),10)
       return this
     
     frame = JSON.parse(msg)

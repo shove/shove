@@ -96,10 +96,8 @@ class Client
   # `name` The name of the channel
   channel: (name) ->
     unless channel = @channels[name]
-      channel = new Channel(name, @socket)
+      channel = new Channel(name,@socket,{'subscribing':[((e) => @trigger("subscribing",{}))]})
       @channels[name] = channel
-      @trigger("subscribing",{})
-      channel.subscribe()
     channel
 
   # Add a app event listener
