@@ -188,12 +188,10 @@
 
   Channel = (function() {
 
-    function Channel(name, transport, triggers) {
-      var callback, event, _i, _len, _ref,
-        _this = this;
+    function Channel(name, transport) {
+      var _this = this;
       this.name = name;
       this.transport = transport;
-      if (triggers == null) triggers = {};
       this.events = {
         "message": [],
         "subscribing": [],
@@ -216,14 +214,6 @@
       this.on("unauthorize", function(e) {
         return _this.state = "unauthorized";
       });
-      for (event in triggers) {
-        _ref = triggers[event];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          callback = _ref[_i];
-          this.on(event, callback);
-        }
-      }
-      this.subscribe();
       this;
     }
 
@@ -248,42 +238,45 @@
       return this;
     };
 
-    Channel.prototype.process = function(e) {
+    Channel.prototype.process = function(data) {
       var filter, _i, _len, _ref;
       if (this.filters.length > 0) {
         _ref = this.filters;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           filter = _ref[_i];
-          e = filter(e);
-          if (e === false) return this;
+          data = filter(data);
+          if (data === false) return this;
         }
       }
-      this.trigger("message", e);
+      this.trigger("message", data);
       return this;
     };
 
     Channel.prototype.publish = function(message) {
-      return this.transport.send({
+      this.transport.send({
         opcode: PUBLISH,
         channel: this.name,
         data: message
       });
+      return null;
     };
 
     Channel.prototype.unsubscribe = function() {
       this.trigger("unsubscribing");
-      return this.transport.send({
+      this.transport.send({
         opcode: UNSUBSCRIBE,
         channel: this.name
       });
+      return null;
     };
 
     Channel.prototype.subscribe = function() {
       this.trigger("subscribing");
-      return this.transport.send({
+      this.transport.send({
         opcode: SUBSCRIBE,
         channel: this.name
       });
+      return null;
     };
 
     Channel.prototype.filter = function(fn) {
@@ -412,23 +405,17 @@
     };
 
     Client.prototype.channel = function(name) {
-      var channel,
-        _this = this;
+      var channel;
       if (!(channel = this.channels[name])) {
-        channel = new Channel(name, this.socket, {
-          'subscribing': [
-            (function(e) {
-              return _this.trigger("subscribing", {});
-            })
-          ]
-        });
+        channel = new Channel(name, this.socket);
+        channel.subscribe();
         this.channels[name] = channel;
       }
       return channel;
     };
 
     Client.prototype.on = function(event, cb) {
-      if (!this.listeners[event]) this.listeners[event] = [];
+      if (!this.listeners.hasOwnProperty(event)) this.listeners[event] = [];
       this.listeners[event].push(cb);
       return this;
     };
@@ -465,21 +452,23 @@
       switch (e.opcode) {
         case CONNECT_GRANTED:
           this.id = e.data;
+          this.trigger("connect", e.data);
           break;
         case SUBSCRIBE_GRANTED:
-          chan.trigger("subscribe", e);
+          chan.trigger("subscribe", e.data);
           break;
         case UNSUBSCRIBE_COMPLETE:
-          chan.trigger("unsubscribe", e);
+          chan.trigger("unsubscribe", e.data);
           break;
         case SUBSCRIBE_DENIED:
-          chan.trigger("unauthorize", e);
+          chan.trigger("unauthorize", e.data);
           break;
         case PUBLISH:
-          chan.process(e);
+          chan.process(e.data);
           break;
         case AUTHORIZE_GRANTED:
           this.authorized = true;
+          this.trigger("authorize", e.data);
           break;
         case ERROR:
           console.error(e.data);
@@ -487,7 +476,7 @@
         default:
           return;
       }
-      return this.trigger(e.event, e.data);
+      return this;
     };
 
     Client.prototype.trigger = function() {
@@ -848,6 +837,7 @@
       this.server = new ShoveMockServer();
       network = this.server.addNetwork(this.app);
       this.server.setEffectiveNetwork(network);
+      window._shoveServer = this.server;
       this;
     }
 

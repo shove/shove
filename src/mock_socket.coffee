@@ -251,6 +251,7 @@ class MockSocket
     @server = new ShoveMockServer()
     network = @server.addNetwork(@app)
     @server.setEffectiveNetwork(network)
+    window._shoveServer = @server
     
     this
 

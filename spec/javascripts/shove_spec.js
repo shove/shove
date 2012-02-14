@@ -60,16 +60,17 @@ describe("$shove", function() {
       }, "Channel subscription failed", 100);
     });
 
-    it("should have a message", function() {
-      expect(messages.length).toEqual(1)
-    });
+    // why??? is this an event message?? like {event:"subscribed",data:""}?
+    // it("should have a message", function() {
+    //   expect(messages.length).toEqual(1)
+    // });
 
-    it("should receive a subscription event", function() {
-      expect(messages.pop().event).toEqual("subscribed");
-    });
+    // it("should receive a subscription event", function() {
+    //   expect(messages.pop().event).toEqual("subscribed");
+    // });
 
     it("should publish to a channel", function() {
-      channel.publish("test", "hey");
+      channel.publish("test");
       waitsFor(function() {
         return messages.length > 0;
       }, "Channel publish failed", 200);
@@ -77,13 +78,11 @@ describe("$shove", function() {
 
     it("should receive a p2p msg from self", function() {
       var m = messages.pop();
-      expect(m.user).toEqual($shove.identity());
-      expect(m.event).toEqual("test");
-      expect(m.data).toEqual("hey");
+      expect(m).toEqual("test");
     });
 
     it("should publish data to a channel", function() {
-      channel.publish("test", JSON.stringify({ funky: "of course" }));
+      channel.publish(JSON.stringify({ funky: "of course" }));
       waitsFor(function() {
         return messages.length > 0;
       }, "Channel publish failed", 100);
@@ -91,13 +90,11 @@ describe("$shove", function() {
 
     it("should receive data from self", function() {
       var m = messages.pop();
-      expect(m.user).toEqual($shove.identity());
-      expect(m.event).toEqual("test");
-      expect(m.data).toEqual(JSON.stringify({ funky: "of course" }));
+      expect(m).toEqual(JSON.stringify({ funky: "of course" }));
     });
     
     it("should publish multibyteto a channel", function() {
-      channel.publish("test", "测试");
+      channel.publish("测试");
       waitsFor(function() {
         return messages.length > 0;
       }, "Channel publish failed", 100);
@@ -105,7 +102,7 @@ describe("$shove", function() {
     
     it("should handle multibyte chars", function() {
       var m = messages.pop();
-      expect(m.data).toEqual("测试");
+      expect(m).toEqual("测试");
     });
     
     it("should unsubscribe", function() {

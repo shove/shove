@@ -96,7 +96,9 @@ class Client
   # `name` The name of the channel
   channel: (name) ->
     unless channel = @channels[name]
-      channel = new Channel(name,@socket,{'subscribing':[((e) => @trigger("subscribing",{}))]})
+      channel = new Channel(name,@socket)
+      # channel.on('subscribing',((e) => @trigger("subscribing",{})))
+      channel.subscribe()
       @channels[name] = channel
     channel
 
@@ -104,7 +106,7 @@ class Client
   # `event` The name of the event
   # `cb` The callback function to call
   on: (event, cb) ->
-    unless @listeners[event]
+    unless @listeners.hasOwnProperty(event)
       @listeners[event] = []
     @listeners[event].push(cb)
     this
@@ -114,8 +116,6 @@ class Client
     @id
 
   # Send a message directly to another on the app
-  # `client` the client identity to send to
-  # `event` the event to trigger remotely
   # `message` the event data
   publish: (channel, message) ->
     @socket.send({
@@ -141,16 +141,25 @@ class Client
   process: (e) ->
     chan = @channels[e.channel]
     switch e.opcode
-      when CONNECT_GRANTED then @id = e.data
-      when SUBSCRIBE_GRANTED then chan.trigger("subscribe",e)
-      when UNSUBSCRIBE_COMPLETE then chan.trigger("unsubscribe",e)
-      when SUBSCRIBE_DENIED then chan.trigger("unauthorize",e)
-      when PUBLISH then chan.process(e)
-      when AUTHORIZE_GRANTED then @authorized = true
-      when ERROR then console.error(e.data)
+      when CONNECT_GRANTED
+        @id = e.data
+        @trigger("connect",e.data)
+      when SUBSCRIBE_GRANTED
+        chan.trigger("subscribe",e.data)
+      when UNSUBSCRIBE_COMPLETE
+        chan.trigger("unsubscribe",e.data)
+      when SUBSCRIBE_DENIED
+        chan.trigger("unauthorize",e.data)
+      when PUBLISH
+        chan.process(e.data)
+      when AUTHORIZE_GRANTED
+        @authorized = true
+        @trigger("authorize",e.data)
+      when ERROR
+        console.error(e.data)
       else
         return
-    @trigger(e.event, e.data)
+    this
 
   # Dispatch event to listeners
   trigger: (event, args...) ->

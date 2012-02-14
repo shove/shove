@@ -6,7 +6,7 @@
 
 class Channel
 
-  constructor: (@name, @transport,triggers = {}) ->
+  constructor: (@name, @transport) ->
     @events = {
       "message": []
       "subscribing": []
@@ -23,15 +23,6 @@ class Channel
     @on("unsubscribe",(e) => @state = "unsubscribed")
     @on("unauthorize",(e) => @state = "unauthorized")
     
-    # Allow user to attach triggers to channel
-    # before channel starts sending messages
-    # to Shove (eg. subscribe())
-    for event of triggers
-      for callback in triggers[event]
-        @on(event,callback)
-    
-    @subscribe()
-
     this
 
   # Bind a function to an event
@@ -55,14 +46,14 @@ class Channel
   
   # Process an event to all bound listeners
   # `message` the data package
-  process: (e) ->
+  process: (data) ->
     if @filters.length > 0
       for filter in @filters
-        e = filter(e)
-        if e == false
+        data = filter(data)
+        if data == false
           return this
     
-    @trigger("message",e)
+    @trigger("message",data)
         
     this
   
@@ -78,6 +69,7 @@ class Channel
       channel: @name,
       data: message
     })
+    null
 
   # Unsubscribe from this channel
   unsubscribe: ->
@@ -86,6 +78,7 @@ class Channel
       opcode: UNSUBSCRIBE,
       channel: @name
     })
+    null
 
   # Register this channel with shove
   subscribe: ->
@@ -94,6 +87,7 @@ class Channel
       opcode: SUBSCRIBE,
       channel: @name
     })
+    null
 
   # Add a message filter.  Message filters are called
   # before any events propogate, so that you can apply
