@@ -154,14 +154,11 @@ class ShoveMockServer
     return null
   
   process: (msg = "{}") ->
-    console.log("ShoveMockServer:process",msg)
     frame = JSON.parse(msg)
 
 
     if ! 'opcode' in frame
       frame.opcode = 0
-    
-    console.log(frame.opcode.toString(16))
     
     response = {
       opcode: ERROR
@@ -171,23 +168,24 @@ class ShoveMockServer
     switch frame.opcode
       
       when CONNECT
-        console.log("CONNECT")
         if 'data' in frame and frame.data.length > 0
           @effectiveClient.setId(frame.data)
         response.opcode = CONNECT_GRANTED
         response.data = @effectiveClient.id
       
       when SUBSCRIBE
-        console.log("SUBSCRIBE")
-        chan = @effectiveNetwork.findChannel(frame.channel)
-        if ! chan
-          chan = @effectiveNetwork.addChannel(frame.channel)
-        chan.addSubscriber(@effectiveClient)
-        response.channel = chan.name
-        response.opcode = SUBSCRIBE_GRANTED
+        if frame.channel.indexOf("private:") >= 0
+          response.channel = frame.channel
+          response.opcode = SUBSCRIBE_DENIED
+        else
+          chan = @effectiveNetwork.findChannel(frame.channel)
+          if ! chan
+            chan = @effectiveNetwork.addChannel(frame.channel)
+          chan.addSubscriber(@effectiveClient)
+          response.channel = chan.name
+          response.opcode = SUBSCRIBE_GRANTED
       
       when UNSUBSCRIBE
-        console.log("UNSUBSCRIBE")
         chan = @effectiveNetwork.findChannel(frame.channel)
         if ! chan
           response.data = "channel does not exist on the connected network"
@@ -199,7 +197,6 @@ class ShoveMockServer
           response.opcode = UNSUBSCRIBE_COMPLETE
       
       when PUBLISH
-        console.log("PUBLISH")
         chan = @effectiveNetwork.findChannel(frame.channel)
         if ! chan
           response.data = "channel does not exist on the connected network"
@@ -212,7 +209,6 @@ class ShoveMockServer
           response = frame
 
       when AUTHORIZE
-        console.log("AUTHORIZE")
         if @effectiveNetwork.checkNetworkKey(frame.data)
           response.opcode = AUTHORIZE_GRANTED
           @effectiveNetwork.addAuthorizer(@effectiveClient)
@@ -220,12 +216,9 @@ class ShoveMockServer
           response.opcode = AUTHORIZE_DENIED
       
       when ERROR
-        console.log("ERROR")
         response.data = "why you error dog?"
 
     _opcode = response.opcode.toString(16)
-    console.log("response:",_opcode,response)
-    console.log("/ShoveMockServer:process")
     return JSON.stringify(response)
 
 
@@ -251,7 +244,6 @@ class MockSocket
     @server = new ShoveMockServer()
     network = @server.addNetwork(@app)
     @server.setEffectiveNetwork(network)
-    window._shoveServer = @server
     
     this
 

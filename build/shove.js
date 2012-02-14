@@ -198,7 +198,7 @@
         "subscribe": [],
         "unsubscribing": [],
         "unsubscribe": [],
-        "unauthorize": []
+        "unauthorized": []
       };
       this.filters = [];
       this.state = "unsubscribed";
@@ -211,7 +211,7 @@
       this.on("unsubscribe", function(e) {
         return _this.state = "unsubscribed";
       });
-      this.on("unauthorize", function(e) {
+      this.on("unauthorized", function(e) {
         return _this.state = "unauthorized";
       });
       this;
@@ -461,7 +461,7 @@
           chan.trigger("unsubscribe", e.data);
           break;
         case SUBSCRIBE_DENIED:
-          chan.trigger("unauthorize", e.data);
+          chan.trigger("unauthorized", e.data);
           break;
         case PUBLISH:
           chan.process(e.data);
@@ -745,17 +745,14 @@
     ShoveMockServer.prototype.process = function(msg) {
       var chan, frame, response, _opcode, _ref;
       if (msg == null) msg = "{}";
-      console.log("ShoveMockServer:process", msg);
       frame = JSON.parse(msg);
       if (_ref = !'opcode', __indexOf.call(frame, _ref) >= 0) frame.opcode = 0;
-      console.log(frame.opcode.toString(16));
       response = {
         opcode: ERROR,
         data: ""
       };
       switch (frame.opcode) {
         case CONNECT:
-          console.log("CONNECT");
           if (__indexOf.call(frame, 'data') >= 0 && frame.data.length > 0) {
             this.effectiveClient.setId(frame.data);
           }
@@ -763,15 +760,18 @@
           response.data = this.effectiveClient.id;
           break;
         case SUBSCRIBE:
-          console.log("SUBSCRIBE");
-          chan = this.effectiveNetwork.findChannel(frame.channel);
-          if (!chan) chan = this.effectiveNetwork.addChannel(frame.channel);
-          chan.addSubscriber(this.effectiveClient);
-          response.channel = chan.name;
-          response.opcode = SUBSCRIBE_GRANTED;
+          if (frame.channel.indexOf("private:") >= 0) {
+            response.channel = frame.channel;
+            response.opcode = SUBSCRIBE_DENIED;
+          } else {
+            chan = this.effectiveNetwork.findChannel(frame.channel);
+            if (!chan) chan = this.effectiveNetwork.addChannel(frame.channel);
+            chan.addSubscriber(this.effectiveClient);
+            response.channel = chan.name;
+            response.opcode = SUBSCRIBE_GRANTED;
+          }
           break;
         case UNSUBSCRIBE:
-          console.log("UNSUBSCRIBE");
           chan = this.effectiveNetwork.findChannel(frame.channel);
           if (!chan) {
             response.data = "channel does not exist on the connected network";
@@ -784,7 +784,6 @@
           }
           break;
         case PUBLISH:
-          console.log("PUBLISH");
           chan = this.effectiveNetwork.findChannel(frame.channel);
           if (!chan) {
             response.data = "channel does not exist on the connected network";
@@ -798,7 +797,6 @@
           }
           break;
         case AUTHORIZE:
-          console.log("AUTHORIZE");
           if (this.effectiveNetwork.checkNetworkKey(frame.data)) {
             response.opcode = AUTHORIZE_GRANTED;
             this.effectiveNetwork.addAuthorizer(this.effectiveClient);
@@ -807,12 +805,9 @@
           }
           break;
         case ERROR:
-          console.log("ERROR");
           response.data = "why you error dog?";
       }
       _opcode = response.opcode.toString(16);
-      console.log("response:", _opcode, response);
-      console.log("/ShoveMockServer:process");
       return JSON.stringify(response);
     };
 
@@ -837,7 +832,6 @@
       this.server = new ShoveMockServer();
       network = this.server.addNetwork(this.app);
       this.server.setEffectiveNetwork(network);
-      window._shoveServer = this.server;
       this;
     }
 

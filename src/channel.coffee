@@ -13,7 +13,7 @@ class Channel
       "subscribe": []
       "unsubscribing": []
       "unsubscribe": []
-      "unauthorize": []
+      "unauthorized": []
     }
     @filters = []
     @state = "unsubscribed"
@@ -21,7 +21,7 @@ class Channel
     @on("subscribing",(e) => @state = "subscribing")
     @on("subscribe",(e) => @state = "subscribed")
     @on("unsubscribe",(e) => @state = "unsubscribed")
-    @on("unauthorize",(e) => @state = "unauthorized")
+    @on("unauthorized",(e) => @state = "unauthorized")
     
     this
 

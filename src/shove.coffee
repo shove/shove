@@ -149,7 +149,7 @@ class Client
       when UNSUBSCRIBE_COMPLETE
         chan.trigger("unsubscribe",e.data)
       when SUBSCRIBE_DENIED
-        chan.trigger("unauthorize",e.data)
+        chan.trigger("unauthorized",e.data)
       when PUBLISH
         chan.process(e.data)
       when AUTHORIZE_GRANTED
