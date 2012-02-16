@@ -118,30 +118,30 @@ describe("$shove", function() {
   });
   
   
-  describe("private channel", function() {
-    var channel;
-    var unauthorized = false;
-    
-    it("should receive a unauthorized event on a private channel", function() {
-      channel = $shove.channel("private:test").on("unauthorized", function(e) {
-        unauthorized = true;
-      });
-  
-      waitsFor(function() {
-        return channel.state == "unauthorized";
-      }, "Channel subscription failed", 100);
-    
-    });
-    
-    it("should receive a unauthorized event", function() {
-      expect(channel.state).toEqual("unauthorized");
-    });
-  
-    it("should trigger a unauthorized event", function() {
-      expect(unauthorized).toEqual(true);
-    });
-    
-  });
+  // describe("private channel", function() {
+  //   var channel;
+  //   var unauthorized = false;
+  //   
+  //   it("should receive a unauthorized event on a private channel", function() {
+  //     channel = $shove.channel("private:test").on("unauthorized", function(e) {
+  //       unauthorized = true;
+  //     });
+  // 
+  //     waitsFor(function() {
+  //       return channel.state == "unauthorized";
+  //     }, "Channel subscription failed", 100);
+  //   
+  //   });
+  //   
+  //   it("should receive a unauthorized event", function() {
+  //     expect(channel.state).toEqual("unauthorized");
+  //   });
+  // 
+  //   it("should trigger a unauthorized event", function() {
+  //     expect(unauthorized).toEqual(true);
+  //   });
+  //   
+  // });
 
   // describe("presence channel", function() {
   //   var channel;

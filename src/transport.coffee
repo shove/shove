@@ -82,7 +82,6 @@ class Transport
   # Send data on the transport
   # `data` - the data to send
   send: (data) ->
-    #console.log(data)
     unless @state == "CONNECTED"
       @queue.push(data)
     else
@@ -100,7 +99,14 @@ class Transport
           
   # Process the message event
   process: (msg) ->
-    @dispatch("message", @decode(msg))
+    @dispatch("message", @decode(msg.data))
+    
+  opened: () ->
+    @dispatch("connecting")
+    connectMessage = 
+      opcode:CONNECT
+      data:@id
+    @transmit(@encode(connectMessage))
   
   # Connected handler
   connected: (e) ->
@@ -154,14 +160,8 @@ class WebSocketTransport extends Transport
   constructor: (app, secure) ->
     super(app, secure)
 
-    @socket = new MockSocket(
-      "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}")
-    @socket.onclose = => @disconnected()
-    @socket.onmessage = (e) => @process(e)
-    @socket.onopen = => @connected()
-
   # Override
-  connect: (id = null) ->
+  connect: (@id = null) ->
     # skip if we are connected
     if @state == "CONNECTED"
       return
@@ -171,16 +171,15 @@ class WebSocketTransport extends Transport
       @dispatch("hostlookup")
       @requestHosts()
       return
-       
-    @dispatch("connecting")
 
-    @transmit(JSON.stringify({opcode:CONNECT,data:id}))
+    @socket = new WebSocket(
+      "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}")
+    @socket.onopen = => @opened()
+    @socket.onclose = => @disconnected()
+    @socket.onmessage = (e) => @process(e)
 
     @forcedc = false
-      
-    
-    
-  
+
   # Override
   disconnect: ->
     @forcedc = true

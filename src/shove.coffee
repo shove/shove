@@ -77,8 +77,8 @@ class Client
       if window.WebSocket != undefined
         @socket = new WebSocketTransport(@app, @secure)
         @socket.on("message", () => @process.apply(this, arguments))
-        @socket.on("connect", () => @trigger("connect"))
         @socket.on("connecting", () => @trigger("connecting"))
+        @socket.on("connect", () => @trigger("connect"))
         @socket.on("disconnect", () => @trigger("disconnect"))
         @socket.on("reconnect", () => @onReconnect())
         @socket.connect(@id)
@@ -143,6 +143,7 @@ class Client
     switch e.opcode
       when CONNECT_GRANTED
         @id = e.data
+        @socket.connected(e)
         @trigger("connect",e.data)
       when SUBSCRIBE_GRANTED
         chan.trigger("subscribe",e.data)

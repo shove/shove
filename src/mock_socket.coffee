@@ -219,7 +219,7 @@ class ShoveMockServer
         response.data = "why you error dog?"
 
     _opcode = response.opcode.toString(16)
-    return JSON.stringify(response)
+    return response
 
 
   
@@ -228,27 +228,42 @@ class ShoveMockServer
 
 
 class MockSocket
+  
+  CONNECTING: 0
+  OPEN: 1
+  CLOSING: 2
+  CLOSED: 3
 
   constructor: (@url,@protocols...) ->
     @extensions = ""
     @protocol = ""
-    @readyState = @state('connecting')
+    @readyState = @CONNECTING
     @bufferedAmount = 0
     
     urlReg = /^([\w\d]+):\/\/([^\/]+)\/([^\/]+)(.*?)$/gi
     urlMatches = urlReg.exec(@url)
     
     @app = urlMatches[3]
+    
+
 
     # Seed ShoveMockServer
     @server = new ShoveMockServer()
     network = @server.addNetwork(@app)
     @server.setEffectiveNetwork(network)
     
+    socketOpenCallback = () =>
+      @readyState = @OPEN
+      @onopen()
+    @asyncRespond(socketOpenCallback)
+    
     this
+  
+  asyncRespond:(cb) ->
+    window.setTimeout(cb,10)
 
   close: (code = 0,reason = "") ->
-    @readyState = @state('closing')
+    @readyState = @CLOSING
     @onclose()
     null
   
@@ -270,19 +285,25 @@ class MockSocket
   onmessage: () ->
     
   send: (msg ="{}") ->
-    if @readyState == @state('open')
+    if @readyState == @OPEN
       response = @server.process(msg)
       if response != null
-        window.setTimeout((() => @onmessage(response)),10)
+
+        socketResponse =
+          data:response
+        socketResponse = JSON.stringify(socketResponse)
+        @asyncRespond((() => @onmessage(socketResponse)))
       return this
-    
-    frame = JSON.parse(msg)
-    
-    if frame.opcode
-      if frame.opcode == CONNECT
-        connect_response = JSON.parse(@server.process(msg))
-        if connect_response.opcode == CONNECT_GRANTED
-          @readyState = @state('open')
-          @onopen()
+    # 
+    # frame = JSON.parse(msg)
+    # 
+    # if frame.opcode
+    #   if frame.opcode == CONNECT
+    #     connect_response = JSON.parse(@server.process(msg))
+    #     if connect_response.opcode == CONNECT_GRANTED
+    #       @readyState = @state('open')
+
 
     null
+
+# window.WebSocket = MockSocket

@@ -93,7 +93,17 @@
     };
 
     Transport.prototype.process = function(msg) {
-      return this.dispatch("message", this.decode(msg));
+      return this.dispatch("message", this.decode(msg.data));
+    };
+
+    Transport.prototype.opened = function() {
+      var connectMessage;
+      this.dispatch("connecting");
+      connectMessage = {
+        opcode: CONNECT,
+        data: this.id
+      };
+      return this.transmit(this.encode(connectMessage));
     };
 
     Transport.prototype.connected = function(e) {
@@ -143,33 +153,28 @@
     __extends(WebSocketTransport, _super);
 
     function WebSocketTransport(app, secure) {
-      var _this = this;
       WebSocketTransport.__super__.constructor.call(this, app, secure);
-      this.socket = new MockSocket("" + (this.secure ? "wss" : "ws") + "://" + (this.host()) + "/" + this.app);
-      this.socket.onclose = function() {
-        return _this.disconnected();
-      };
-      this.socket.onmessage = function(e) {
-        return _this.process(e);
-      };
-      this.socket.onopen = function() {
-        return _this.connected();
-      };
     }
 
     WebSocketTransport.prototype.connect = function(id) {
-      if (id == null) id = null;
+      var _this = this;
+      this.id = id != null ? id : null;
       if (this.state === "CONNECTED") return;
       if (!this.hosts) {
         this.dispatch("hostlookup");
         this.requestHosts();
         return;
       }
-      this.dispatch("connecting");
-      this.transmit(JSON.stringify({
-        opcode: CONNECT,
-        data: id
-      }));
+      this.socket = new WebSocket("" + (this.secure ? "wss" : "ws") + "://" + (this.host()) + "/" + this.app);
+      this.socket.onopen = function() {
+        return _this.opened();
+      };
+      this.socket.onclose = function() {
+        return _this.disconnected();
+      };
+      this.socket.onmessage = function(e) {
+        return _this.process(e);
+      };
       return this.forcedc = false;
     };
 
@@ -381,11 +386,11 @@
           this.socket.on("message", function() {
             return _this.process.apply(_this, arguments);
           });
-          this.socket.on("connect", function() {
-            return _this.trigger("connect");
-          });
           this.socket.on("connecting", function() {
             return _this.trigger("connecting");
+          });
+          this.socket.on("connect", function() {
+            return _this.trigger("connect");
           });
           this.socket.on("disconnect", function() {
             return _this.trigger("disconnect");
@@ -452,6 +457,7 @@
       switch (e.opcode) {
         case CONNECT_GRANTED:
           this.id = e.data;
+          this.socket.connected(e);
           this.trigger("connect", e.data);
           break;
         case SUBSCRIBE_GRANTED:
@@ -808,7 +814,7 @@
           response.data = "why you error dog?";
       }
       _opcode = response.opcode.toString(16);
-      return JSON.stringify(response);
+      return response;
     };
 
     return ShoveMockServer;
@@ -817,14 +823,23 @@
 
   MockSocket = (function() {
 
+    MockSocket.prototype.CONNECTING = 0;
+
+    MockSocket.prototype.OPEN = 1;
+
+    MockSocket.prototype.CLOSING = 2;
+
+    MockSocket.prototype.CLOSED = 3;
+
     function MockSocket() {
-      var network, protocols, url, urlMatches, urlReg;
+      var network, protocols, socketOpenCallback, url, urlMatches, urlReg,
+        _this = this;
       url = arguments[0], protocols = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
       this.url = url;
       this.protocols = protocols;
       this.extensions = "";
       this.protocol = "";
-      this.readyState = this.state('connecting');
+      this.readyState = this.CONNECTING;
       this.bufferedAmount = 0;
       urlReg = /^([\w\d]+):\/\/([^\/]+)\/([^\/]+)(.*?)$/gi;
       urlMatches = urlReg.exec(this.url);
@@ -832,13 +847,22 @@
       this.server = new ShoveMockServer();
       network = this.server.addNetwork(this.app);
       this.server.setEffectiveNetwork(network);
+      socketOpenCallback = function() {
+        _this.readyState = _this.OPEN;
+        return _this.onopen();
+      };
+      this.asyncRespond(socketOpenCallback);
       this;
     }
+
+    MockSocket.prototype.asyncRespond = function(cb) {
+      return window.setTimeout(cb, 10);
+    };
 
     MockSocket.prototype.close = function(code, reason) {
       if (code == null) code = 0;
       if (reason == null) reason = "";
-      this.readyState = this.state('closing');
+      this.readyState = this.CLOSING;
       this.onclose();
       return null;
     };
@@ -866,27 +890,21 @@
     MockSocket.prototype.onmessage = function() {};
 
     MockSocket.prototype.send = function(msg) {
-      var connect_response, frame, response,
+      var response, socketResponse,
         _this = this;
       if (msg == null) msg = "{}";
-      if (this.readyState === this.state('open')) {
+      if (this.readyState === this.OPEN) {
         response = this.server.process(msg);
         if (response !== null) {
-          window.setTimeout((function() {
-            return _this.onmessage(response);
-          }), 10);
+          socketResponse = {
+            data: response
+          };
+          socketResponse = JSON.stringify(socketResponse);
+          this.asyncRespond((function() {
+            return _this.onmessage(socketResponse);
+          }));
         }
         return this;
-      }
-      frame = JSON.parse(msg);
-      if (frame.opcode) {
-        if (frame.opcode === CONNECT) {
-          connect_response = JSON.parse(this.server.process(msg));
-          if (connect_response.opcode === CONNECT_GRANTED) {
-            this.readyState = this.state('open');
-            this.onopen();
-          }
-        }
       }
       return null;
     };
