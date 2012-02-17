@@ -867,20 +867,6 @@
       return null;
     };
 
-    MockSocket.prototype.state = function(str) {
-      switch (str) {
-        case 'connecting':
-          return 0;
-        case 'open':
-          return 1;
-        case 'closing':
-          return 2;
-        case 'closed':
-          return 3;
-      }
-      return null;
-    };
-
     MockSocket.prototype.onopen = function() {};
 
     MockSocket.prototype.onerror = function() {};
@@ -897,9 +883,8 @@
         response = this.server.process(msg);
         if (response !== null) {
           socketResponse = {
-            data: response
+            data: JSON.stringify(response)
           };
-          socketResponse = JSON.stringify(socketResponse);
           this.asyncRespond((function() {
             return _this.onmessage(socketResponse);
           }));

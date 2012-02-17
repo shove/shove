@@ -266,15 +266,6 @@ class MockSocket
     @readyState = @CLOSING
     @onclose()
     null
-  
-  state: (str) ->
-    switch str
-      when 'connecting' then return 0
-      when 'open' then return 1
-      when 'closing' then return 2
-      when 'closed' then return 3
-    return null
-
 
   onopen: () ->
     
@@ -290,8 +281,7 @@ class MockSocket
       if response != null
 
         socketResponse =
-          data:response
-        socketResponse = JSON.stringify(socketResponse)
+          data:JSON.stringify(response)
         @asyncRespond((() => @onmessage(socketResponse)))
       return this
     # 
