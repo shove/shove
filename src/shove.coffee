@@ -117,13 +117,13 @@ class Client
 
   # Send a message directly to another on the app
   # `message` the event data
-  publish: (channel, message) ->
-    @socket.send({
-      opcode: PUBLISH,
-      channel: channel,
-      data: message
-    })
-    this
+  # publish: (channel, message) ->
+  #   @socket.send({
+  #     opcode: PUBLISH,
+  #     channel: channel,
+  #     data: message
+  #   })
+  #   this
 
   # Self authorize to permit all
   # actions on the connection

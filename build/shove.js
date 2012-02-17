@@ -429,15 +429,6 @@
       return this.id;
     };
 
-    Client.prototype.publish = function(channel, message) {
-      this.socket.send({
-        opcode: PUBLISH,
-        channel: channel,
-        data: message
-      });
-      return this;
-    };
-
     Client.prototype.authorize = function() {
       this.socket.send({
         opcode: AUTHORIZE,
