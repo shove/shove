@@ -62,7 +62,7 @@ channel.filter(function(msg){
 /* Halt messages that contain profanity */
 channel.filter(function(msg){
   if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
-    if(msg.data.search(/(poop|fanny)/gi) > 0)
+    if(msg.data.search(/(poop|fanny)/gi) >= 0)
       return false;
   }
   return msg;
