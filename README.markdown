@@ -29,20 +29,64 @@ $shove.on('authorize',function(){window.alert('shove network authorized, feel fr
 ```
 
 ### Subscribe to an App's Channel
+
+Channels that do not exist will be created automatically by the Shove server.  Bind handlers using the following event types:
+
++ message
++ subscribing
++ subscribe
++ unsubscribing
++ unsubscribe
++ unauthorized
+
 ```
 channel = $shove.channel('test-channel');
+channel.on('subscribe',function(){window.alert('you are subscribed to this channel!');});
+channel.on('unauthorized',function(){window.alert('channel subscribed failed, not authorized!');});
+channel.subscribe();
 ```
+
+#### Add filters to easily modify incoming messages
+
+Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
+
+```
+/* Filter replaces occurrences of 'hello' with 'HULLO' within message data strings */
+channel.filter(function(msg){
+  if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
+    msg.data = msg.data.replace('hello','HULLO');
+  }
+  return msg;
+});
+
+/* Halt messages that contain profanity */
+channel.filter(function(msg){
+  if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
+    if(msg.data.search(/(poop|fanny)/gi) > 0)
+      return false;
+  }
+  return msg;
+});
+
+channel.on('message',function(msg){/* present message to user or hand off to client application */return;});
+```
+
 ### Self Authorize
+
 ```
 $shove.app_key = 'test-network-app-key';
 $shove.authorize();
 ```
+
 #### Publish Messages
+
 ```
 channel.publish('message here');
 channel.publish({foo:'bar',arr:[4,5,6]});
 ```
+
 ### Unsubscribe from Channels
+
 ```
 channel.unsubscribe();
 ```
