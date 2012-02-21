@@ -19,7 +19,7 @@ Allow your client-side app to respond to network connection events with the foll
 + authorize
 + reconnect
 
-```
+```javascript
 $shove.on('connect',function(){window.alert('shove network connected');});
 $shove.on('authorize',function(){window.alert('shove network authorized, feel free to publish to all channels');});
 ```
@@ -28,7 +28,7 @@ $shove.on('authorize',function(){window.alert('shove network authorized, feel fr
 
 Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
 
-```
+```javascript
 $shove.connect('test-network');
 ```
 
@@ -43,7 +43,7 @@ Channels that do not exist will be created automatically by the Shove server.  B
 + unsubscribe
 + unauthorized
 
-```
+```javascript
 channel = $shove.channel('test-channel');
 channel.on('subscribe',function(){window.alert('you are subscribed to this channel!');});
 channel.on('unauthorized',function(){window.alert('channel subscribed failed, not authorized!');});
@@ -54,7 +54,7 @@ channel.subscribe();
 
 A client will cease to receive messages from a channel when unsubscribed.
 
-```
+```javascript
 channel.unsubscribe();
 ```
 
@@ -62,7 +62,7 @@ channel.unsubscribe();
 
 Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
 
-```
+```javascript
 /* Filter replaces occurrences of 'hello' with 'HULLO' within message data strings */
 channel.filter(function(msg){
   if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
@@ -87,7 +87,7 @@ channel.on('message',function(msg){/* present message to user or hand off to cli
 
 In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
 
-```
+```javascript
 $shove.app_key = 'test-network-app-key';
 $shove.authorize();
 ```
@@ -96,7 +96,7 @@ $shove.authorize();
 
 Messages can be simple strings or numbers or even complex objects and arrays.
 
-```
+```javascript
 channel.publish('message here');
 channel.publish({foo:'bar',arr:[4,5,6]});
 ```
