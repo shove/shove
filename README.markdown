@@ -9,13 +9,9 @@ please check out the [shove.io javascript documentation](http://shove.io/documen
 
 ## Connect to an App Network
 
-```
-$shove.connect('test-network');
-```
-
 ### Bind handlers to shove app networks
 
-App network events:
+Allow your client-side app to respond to network connection events with the following types:
 
 + connecting
 + connect
@@ -26,6 +22,14 @@ App network events:
 ```
 $shove.on('connect',function(){window.alert('shove network connected');});
 $shove.on('authorize',function(){window.alert('shove network authorized, feel free to publish to all channels');});
+```
+
+### Connect
+
+Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
+
+```
+$shove.connect('test-network');
 ```
 
 ### Subscribe to an App's Channel
@@ -44,6 +48,14 @@ channel = $shove.channel('test-channel');
 channel.on('subscribe',function(){window.alert('you are subscribed to this channel!');});
 channel.on('unauthorized',function(){window.alert('channel subscribed failed, not authorized!');});
 channel.subscribe();
+```
+
+### Unsubscribe from Channels
+
+A client will cease to receive messages from a channel when unsubscribed.
+
+```
+channel.unsubscribe();
 ```
 
 #### Add filters to easily modify incoming messages
@@ -73,6 +85,8 @@ channel.on('message',function(msg){/* present message to user or hand off to cli
 
 ### Self Authorize
 
+In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
+
 ```
 $shove.app_key = 'test-network-app-key';
 $shove.authorize();
@@ -80,13 +94,9 @@ $shove.authorize();
 
 #### Publish Messages
 
+Messages can be simple strings or numbers or even complex objects and arrays.
+
 ```
 channel.publish('message here');
 channel.publish({foo:'bar',arr:[4,5,6]});
-```
-
-### Unsubscribe from Channels
-
-```
-channel.unsubscribe();
 ```
