@@ -20,7 +20,7 @@ Include the latest stable version of the shove javascript client.
 
 Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
 
-```
+```javascript
 $shove.connect('test-network');
 ```
 
@@ -34,7 +34,7 @@ Allow your client-side app to respond to network connection events with the foll
 + authorize
 + reconnect
 
-```
+```javascript
 $shove.on('connect',function(){
   window.alert('shove network connected');
   return;
@@ -58,6 +58,7 @@ Channels that do not exist will be created automatically by the Shove server.  B
 
 ```javascript
 channel = $shove.channel('test-channel');
+channel.subscribe();
 channel.on('subscribe',function(){
   window.alert('you are subscribed to this channel!');
   return;
@@ -66,7 +67,6 @@ channel.on('unauthorized',function(){
   window.alert('channel subscribed failed, not authorized!');
   return;
 });
-channel.subscribe();
 ```
 
 ### Unsubscribe from Channels
