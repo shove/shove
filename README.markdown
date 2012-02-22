@@ -6,8 +6,23 @@ since the javascript is modified with cluster information on request.  You can, 
 For a full overview of the client and instructions on how to use it,
 please check out the [shove.io javascript documentation](http://shove.io/documentation/javascript_api)
 
+## Include the Shove Library
+
+Include the latest stable version of the shove javascript client.
+
+```html
+<script type="text/javascript" src="http://cdn.shove.io/shove.js"></script>
+```
 
 ## Connect to an App Network
+
+### Connect
+
+Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
+
+```
+$shove.connect('test-network');
+```
 
 ### Bind handlers to shove app networks
 
@@ -20,16 +35,14 @@ Allow your client-side app to respond to network connection events with the foll
 + reconnect
 
 ```
-$shove.on('connect',function(){window.alert('shove network connected');});
-$shove.on('authorize',function(){window.alert('shove network authorized, feel free to publish to all channels');});
-```
-
-### Connect
-
-Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
-
-```
-$shove.connect('test-network');
+$shove.on('connect',function(){
+  window.alert('shove network connected');
+  return;
+});
+$shove.on('authorize',function(){
+  window.alert('shove network authorized, feel free to publish to all channels');
+  return;
+});
 ```
 
 ### Subscribe to an App's Channel
@@ -45,8 +58,14 @@ Channels that do not exist will be created automatically by the Shove server.  B
 
 ```
 channel = $shove.channel('test-channel');
-channel.on('subscribe',function(){window.alert('you are subscribed to this channel!');});
-channel.on('unauthorized',function(){window.alert('channel subscribed failed, not authorized!');});
+channel.on('subscribe',function(){
+  window.alert('you are subscribed to this channel!');
+  return;
+});
+channel.on('unauthorized',function(){
+  window.alert('channel subscribed failed, not authorized!');
+  return;
+});
 channel.subscribe();
 ```
 
@@ -80,7 +99,10 @@ channel.filter(function(msg){
   return msg;
 });
 
-channel.on('message',function(msg){/* present message to user or hand off to client application */return;});
+channel.on('message',function(msg){
+  /* present message to user or hand off to client application */
+  return;
+});
 ```
 
 ### Self Authorize
@@ -98,5 +120,8 @@ Messages can be simple strings or numbers or even complex objects and arrays.
 
 ```
 channel.publish('message here');
-channel.publish({foo:'bar',arr:[4,5,6]});
+channel.publish({
+  foo:'bar',
+  arr:[4,5,6]
+});
 ```
