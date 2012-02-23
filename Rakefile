@@ -74,8 +74,34 @@ def invalidate files
   end
 end
 
+task :default => :spec
 
-task :default => [:build]
+task :spec do
+  system "coffee specs/shove_specs.coffee"
+end
+
+desc "Watch files and run the spec, coffee --watch on many + run"
+task :autospec => [:spec] do
+
+  require "eventmachine"
+  
+  $last = Time.now
+
+  module Handler
+    def file_modified
+      if Time.now - $last > 1
+        $last = Time.now
+        system "coffee specs/shove_specs.coffee"
+      end
+    end
+  end
+
+  EM.run do
+    EM.watch_file "shove.coffee", Handler
+    EM.watch_file "specs/shove_specs.coffee", Handler
+  end
+
+end
 
 desc "Compile coffeescript to js"
 task :compile do
