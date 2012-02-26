@@ -36,6 +36,12 @@ PRESENCE_SUBSCRIBED = 0x70
 PRESENCE_UNSUBSCRIBED = 0x71
 PRESENCE_LIST = 0x72
 
+SUBSCRIBING_STATE = 0x1
+SUBSCRIBED_STATE = 0x2
+UNSUBSCRIBED_STATE = 0x3
+UNSUBSCRIBING_STATE = 0x4
+UNAUTHORIZED_STATE = 0x5
+
 errors = 0
 
 
@@ -50,7 +56,7 @@ class WebSocket
     backdoor = this
 
   send: (m) ->
-    @queue.push(m)
+    @queue.push(JSON.parse(m))
 
   clear: () ->
     @queue = []
@@ -138,6 +144,8 @@ runner.test("should trigger handshake event", () ->
 
   trig.should.true)
 
+runner.test("should send a connect op", () ->
+  backdoor.pop().opcode.should.equal(CONNECT))
 
 runner.test("should trigger connected event", () ->
   trig = false
@@ -155,5 +163,116 @@ runner.test("should trigger connected event", () ->
 runner.test("should have an id", () ->
   shove.id.should.equal("idx"))
 
+
+runner.describe("Channels")
+
+runner.test("should start subscribing to a channel", () ->
+  trig = false
+  shove.channel("c1").on("subscribing", () ->
+    trig = true)
+  shove.channel("c1").state.should.equal(SUBSCRIBING_STATE)
+  trig.should.true
+  )
+
+runner.test("should handle unauthorized event", () ->
+  trig = false
+  shove.channel("c1").on("unauthorized", () ->
+    trig = true)
+
+  backdoor.inject({
+    opcode: SUBSCRIBE_DENIED,
+    channel: "c1"
+  })
+
+  shove.channel("c1").state.should.equal(UNAUTHORIZED_STATE)
+  trig.should.true
+  )
+
+runner.test("should handle subscribed event", () ->
+  trig = false
+  shove.channel("c1").on("subscribe", () ->
+    trig = true)
+
+  backdoor.inject({
+    opcode: SUBSCRIBE_GRANTED,
+    channel: "c1"
+  })
+
+  shove.channel("c1").state.should.equal(SUBSCRIBED_STATE)
+  trig.should.true
+  )
+
+runner.test("should handle message events", () ->
+  m = null
+  shove.channel("c1").on("message", (m_) ->
+    m = m_)
+
+  backdoor.inject({
+    opcode: PUBLISH,
+    channel: "c1",
+    data: "test message"
+  })
+
+  m.should.equal("test message")
+  )
+
+runner.test("should handle message events with from data", () ->
+  m = null
+  f = null
+  shove.channel("c1").on("message", (m_, f_) ->
+      m = m_
+      f = f_)
+
+  backdoor.inject({
+    opcode: PUBLISH,
+    channel: "c1",
+    data: "test message",
+    from: "dan"
+  })
+
+  m.should.equal("test message")
+  f.should.equal("dan")
+  )
+
+runner.test("should run messages through filters", () ->
+
+  c = shove.channel("c1")
+
+  c.filter((m_) ->
+    "!#{m_}!")
+
+  m = null
+  c.on("message", (m_) ->
+    m = m_)
+
+  backdoor.inject({
+    opcode: PUBLISH,
+    channel: "c1",
+    data: "test"
+  })
+
+  m.should.equal("!test!")
+  )
+
+runner.test("should start unsubscribing", () ->
+  trig = false
+  shove.channel("c1").on("unsubscribing", () ->
+    trig = true)
+  shove.channel("c1").unsubscribe()
+  shove.channel("c1").state.should.equal(UNSUBSCRIBING_STATE)
+  trig.should.true
+  )
+
+runner.test("should unsubscribe", () ->
+  trig = false
+  shove.channel("c1").on("unsubscribe", () ->
+    trig = true)
+  backdoor.inject({
+    opcode: UNSUBSCRIBE_COMPLETE,
+    channel: "c1"
+  })
+  shove.channel("c1").state.should.equal(UNSUBSCRIBED_STATE)
+  trig.should.true
+  )
 
 runner.report()

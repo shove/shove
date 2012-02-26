@@ -1,8 +1,7 @@
 require "rubygems"
-require "yuicompressor"
-require "jasmine"
-require "yaml"
-require "right_aws"
+require "bundler/setup"
+
+Bundler.require
 
 # S3 bucket
 BUCKET = "shove-cdn"
@@ -12,14 +11,11 @@ VERSION = "0.8"
 
 # Files to compile
 FILES = [
-  "src/transport.coffee",
-  "src/channel.coffee",
-  "src/shove.coffee",
-  "src/mock_socket.coffee"
+  "shove.coffee"
 ].join(" ")
 
 # Where we write compiled files
-OUT_DIR = File.dirname(__FILE__) + "/build"
+OUT_DIR = File.dirname(__FILE__)
 
 Log = Logger.new(STDOUT)
 
@@ -96,16 +92,12 @@ task :autospec => [:spec] do
     end
   end
 
+  EM.kqueue if EM.kqueue?
   EM.run do
     EM.watch_file "shove.coffee", Handler
     EM.watch_file "specs/shove_specs.coffee", Handler
   end
 
-end
-
-desc "Compile coffeescript to js"
-task :compile do
-  system "coffee -o tmp --compile #{FILES}"
 end
 
 desc "Publish dev to S3"
@@ -174,22 +166,6 @@ task :build do
     f << js
   end
 
-end
-
-desc "Autocompile"
-task :autobuild do
-  Log.info "Watching coffee..."
-  
-  unless Dir.exists?(OUT_DIR)
-    Dir.mkdir(OUT_DIR)
-  end
-  
-  target = "#{OUT_DIR}/shove.js"
-  
-  loop do
-    system "coffee --join #{target} --compile #{FILES}"
-    sleep 1
-  end
 end
 
 desc "Publish the result javascript code to S3 and invalidate CF cache"
