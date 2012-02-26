@@ -65,9 +65,9 @@ class WebSocket
     @queue.pop()
 
   inject: (m) ->
-    @onmessage(JSON.stringify({
-      data: m
-    }))
+    @onmessage({
+      data: JSON.stringify(m)
+    })
 
 # Setup global scope for backdoor action
 global.WebSocket = WebSocket
@@ -163,6 +163,34 @@ runner.test("should trigger connected event", () ->
 runner.test("should have an id", () ->
   shove.id.should.equal("idx"))
 
+runner.test("should attempt to authorize", () ->
+  shove.authorize("key")
+  shove.appKey.should.equal("key")
+  msg = backdoor.pop()
+  msg.opcode.should.equal(AUTHORIZE)
+  msg.data.should.equal("key"))
+
+runner.test("should trigger authorize denied", () ->
+  trig = false
+  shove.on("authorize_denied", () ->
+    trig = true)
+  
+  backdoor.inject({
+    opcode: AUTHORIZE_DENIED
+  })
+
+  trig.should.true)
+
+runner.test("should trigger authorize granted", () ->
+  trig = false
+  shove.on("authorize", () ->
+    trig = true)
+  
+  backdoor.inject({
+    opcode: AUTHORIZE_GRANTED
+  })
+
+  trig.should.true)
 
 runner.describe("Channels")
 

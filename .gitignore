@@ -1,6 +1,6 @@
 tmp/
-lib/shove.js
-lib/shove.min.js
-target/
+shove.js
+shove.min.js
+shove.min.js.gz
 Gemfile.lock
-node_modulesi/
+node_modules

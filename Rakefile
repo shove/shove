@@ -134,6 +134,41 @@ task :publish_dev do
 end
 
 desc "Build the js file for production"
+task :combine do
+  Log.info "Combining..."
+  unless Dir.exists?(OUT_DIR)
+    Dir.mkdir(OUT_DIR)
+  end
+  
+  system "coffee --compile shove.coffee"
+  
+  combine = "(function(root) {"
+  
+  [
+    "lib/json2.js",
+    "lib/swfobject.js",
+    "lib/websocket.js",
+    "shove.js"
+  ].each do |file|
+    combine << File.open(file).read
+    combine << "\n"
+  end
+  combine << "})(window);"
+
+  Log.info "Minifying..."
+
+  File.open("shove.min.js", "w") do |f|
+    f << YUICompressor.compress_js(combine, :munge => true)
+  end
+
+  Log.info "Compressing..."
+
+  system "gzip -1 -c shove.min.js > shove.min.js.gz"
+
+  Log.info "Done!"
+end
+
+desc "Build the js file for production"
 task :build do
 
   Log.info "Compiling to javascript..."

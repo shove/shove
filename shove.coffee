@@ -1,3 +1,8 @@
+if(typeof exports != "undefined" && exports != null)
+  root = exports
+else
+  root = window
+
 # Opcodes
 ERROR = 0x00
 CONNECT = 0x01
@@ -157,9 +162,9 @@ class Channel
     this
 
 
-#
+# ------------
 # Transport
-#
+# ------------
 
 CONNECTED_STATE = 0x1
 CONNECTING_STATE = 0x2
@@ -210,10 +215,6 @@ class Transport
     
   host: ->
     @hosts[@connections % @hosts.length]
-
-
-  isConnected: () -> @state == CONNECTED_STATE
-  isHandshaking: () -> @state == HANDSHAKING_STATE
 
   # Bind an event to a function callback
   # `event` options:
@@ -277,7 +278,6 @@ class Transport
     @forcedc = true
     @socket.close()
   
-
   transmit: (frame) ->
     @socket.send(frame)
   
@@ -324,16 +324,13 @@ class Transport
           @connect()), 2000)    
 
     @socket.onmessage = (e) =>
-      @trigger("message", @decode(e).data)
+      @trigger("message", @decode(e.data))
 
     @state = CONNECTING_STATE
     @trigger("connecting")
     @forcedc = false
 
 
-
-
-###############################
 #
 # Client
 #
@@ -350,7 +347,6 @@ class Client
     @listeners = {}
     @channels = {}
     @authorized = false
-    @app_key = ""
     
   # Connect to an app
   # `app` The name of the app
@@ -362,14 +358,14 @@ class Client
         @[key] = val
 
     unless @transport && @transport.state == "CONNECTED"
-      @transport = new Transport()
-      @transport.on("failure"    , () => @trigger("failure"))
-      @transport.on("message"    , (m) => @process(m))
-      @transport.on("connecting" , () => @trigger("connecting"))
+      @transport = new Transport(@app, @secure)
+      @transport.on("failure", () => @trigger("failure"))
+      @transport.on("message", (m) => @process(m))
+      @transport.on("connecting", () => @trigger("connecting"))
       @transport.on("handshaking", () => @trigger("handshaking"))
-      @transport.on("connect"    , () => @trigger("connect"))
-      @transport.on("disconnect" , () => @trigger("disconnect"))
-      @transport.on("reconnect"  , () => @onReconnect())
+      @transport.on("connect", () => @trigger("connect"))
+      @transport.on("disconnect", () => @trigger("disconnect"))
+      @transport.on("reconnect", () => @onReconnect())
       @transport.connect(@id)
     this
        
@@ -413,11 +409,12 @@ class Client
 
   # Self authorize to permit all
   # actions on the connection
-  authorize: () ->
+  authorize: (appKey) ->
+    @appKey = appKey
     @transport.send({
       opcode: AUTHORIZE,
       channel: "*",
-      data: @app_key
+      data: @appKey
     })
     this
 
@@ -441,7 +438,10 @@ class Client
         chan.process(e.data, e.from)
       when AUTHORIZE_GRANTED
         @authorized = true
-        @trigger("authorize",e.data)
+        @trigger("authorize", e.data)
+      when AUTHORIZE_DENIED
+        @authorized = false
+        @trigger("authorize_denied")
       when ERROR
         console.error(e.data)
       else
@@ -461,4 +461,9 @@ class Client
     @trigger("reconnect")
 
 
-(exports ? this : window).$shove = new Client()
+
+# (exports ? exports : (window)).$shove = new Client()
+# if window
+#   window.$shove = new Client()
+# else
+root.$shove = new Client()

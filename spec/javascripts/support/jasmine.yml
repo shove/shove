@@ -1,5 +1,2 @@
 src_files:
-    - lib/swfobject.js
-    - lib/json2.js
-    - build/shove.js
-
+  - shove.js
