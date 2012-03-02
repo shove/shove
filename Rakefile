@@ -96,6 +96,7 @@ task :autospec => [:spec] do
   EM.run do
     EM.watch_file "shove.coffee", Handler
     EM.watch_file "specs/shove_specs.coffee", Handler
+    EM.watch_file "specs/runner.coffee", Handler
   end
 
 end

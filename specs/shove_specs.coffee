@@ -1,6 +1,6 @@
+tRunner = require("./runner.coffee")
+
 coffee = require("coffee-script")
-should = require("should")
-reader = require("fs")
 shove  = require("../shove.coffee").$shove
 
 # Opcodes
@@ -44,7 +44,6 @@ UNAUTHORIZED_STATE = 0x5
 
 errors = 0
 
-
 # Ref the active backdoor websocket
 backdoor = null
 
@@ -72,57 +71,20 @@ class WebSocket
 # Setup global scope for backdoor action
 global.WebSocket = WebSocket
 
-class TestRunner
-  constructor: (trace=false) ->
-    @errors = 0
-    @tests = 0
-    @trace = trace
-    @suite = ""
-
-  describe: (text) ->
-    @suite = text
-    console.log("Running specs for #{text}")
-
-  red: (msg) ->
-    "\x1b[31m#{msg}\x1b[0m"
-     
-  green: (msg) ->
-    "\x1b[32m#{msg}\x1b[0m"
-
-  test: (name, fn) ->
-    @tests++
-    try
-      fn()
-      console.log(@green("☑ #{@suite} #{name}"));
-    catch err
-      @errors++
-      console.log(@red("☒ #{@suite} #{name}"))
-
-      if @trace
-        console.log(err.stack)
-
-  report: () ->
-    console.log("-------------------")
-    if @errors > 0
-
-      console.log("#{@red('☒')} #{@errors}/#{@tests} tests failed")
-    else
-      console.log("#{@green('☑')} All tests passed")
-
 # Run it
 
-runner = new TestRunner(true)
-runner.start
+runner = new tRunner.TestRunner(true)
+
 runner.describe("Shove")
 
 runner.test("should have a version", () ->
-  shove.Version.should.exist)
+  runner.exists(shove.Version))
 
 
 runner.test("should attempt to connect", () ->
   shove.connect("app")
-  shove.app.should.equal("app")
-  shove.transport.should.exist)
+  runner.areEqual(shove.app,"app")
+  runner.exists(shove.transport))
 
 
 runner.test("should attempt to connect", () ->
@@ -131,9 +93,9 @@ runner.test("should attempt to connect", () ->
     trig = true)
 
   shove.connect("app")
-  shove.app.should.equal("app")
+  runner.areEqual(shove.app,"app")
 
-  trig.should.true)
+  runner.isTrue(trig))
 
 runner.test("should trigger handshake event", () ->
   trig = false
@@ -142,10 +104,10 @@ runner.test("should trigger handshake event", () ->
 
   backdoor.onopen();
 
-  trig.should.true)
+  runner.isTrue(trig))
 
 runner.test("should send a connect op", () ->
-  backdoor.pop().opcode.should.equal(CONNECT))
+  runner.areEqual(backdoor.pop().opcode,CONNECT))
 
 runner.test("should trigger connected event", () ->
   trig = false
@@ -157,18 +119,18 @@ runner.test("should trigger connected event", () ->
     data: "idx"
   })
 
-  trig.should.true)
+  runner.isTrue(trig))
 
 
 runner.test("should have an id", () ->
-  shove.id.should.equal("idx"))
+  runner.areEqual(shove.id,"idx"))
 
 runner.test("should attempt to authorize", () ->
   shove.authorize("key")
-  shove.appKey.should.equal("key")
+  runner.areEqual(shove.appKey,"key")
   msg = backdoor.pop()
-  msg.opcode.should.equal(AUTHORIZE)
-  msg.data.should.equal("key"))
+  runner.areEqual(msg.opcode,AUTHORIZE)
+  runner.areEqual(msg.data,"key"))
 
 runner.test("should trigger authorize denied", () ->
   trig = false
@@ -179,7 +141,7 @@ runner.test("should trigger authorize denied", () ->
     opcode: AUTHORIZE_DENIED
   })
 
-  trig.should.true)
+  runner.isTrue(trig))
 
 runner.test("should trigger authorize granted", () ->
   trig = false
@@ -190,7 +152,7 @@ runner.test("should trigger authorize granted", () ->
     opcode: AUTHORIZE_GRANTED
   })
 
-  trig.should.true)
+  runner.isTrue(trig))
 
 runner.describe("Channels")
 
@@ -198,8 +160,8 @@ runner.test("should start subscribing to a channel", () ->
   trig = false
   shove.channel("c1").on("subscribing", () ->
     trig = true)
-  shove.channel("c1").state.should.equal(SUBSCRIBING_STATE)
-  trig.should.true
+  runner.areEqual(shove.channel("c1").state,SUBSCRIBING_STATE)
+  runner.isTrue(trig)
   )
 
 runner.test("should handle unauthorized event", () ->
@@ -212,8 +174,8 @@ runner.test("should handle unauthorized event", () ->
     channel: "c1"
   })
 
-  shove.channel("c1").state.should.equal(UNAUTHORIZED_STATE)
-  trig.should.true
+  runner.areEqual(shove.channel("c1").state,UNAUTHORIZED_STATE)
+  runner.isTrue(trig)
   )
 
 runner.test("should handle subscribed event", () ->
@@ -226,8 +188,8 @@ runner.test("should handle subscribed event", () ->
     channel: "c1"
   })
 
-  shove.channel("c1").state.should.equal(SUBSCRIBED_STATE)
-  trig.should.true
+  runner.areEqual(shove.channel("c1").state,SUBSCRIBED_STATE)
+  runner.isTrue(trig)
   )
 
 runner.test("should handle message events", () ->
@@ -241,7 +203,7 @@ runner.test("should handle message events", () ->
     data: "test message"
   })
 
-  m.should.equal("test message")
+  runner.areEqual(m,"test message")
   )
 
 runner.test("should handle message events with from data", () ->
@@ -258,8 +220,8 @@ runner.test("should handle message events with from data", () ->
     from: "dan"
   })
 
-  m.should.equal("test message")
-  f.should.equal("dan")
+  runner.areEqual(m,"test message")
+  runner.areEqual(f,"dan")
   )
 
 runner.test("should run messages through filters", () ->
@@ -279,7 +241,7 @@ runner.test("should run messages through filters", () ->
     data: "test"
   })
 
-  m.should.equal("!test!")
+  runner.areEqual(m,"!test!")
   )
 
 runner.test("should start unsubscribing", () ->
@@ -287,8 +249,8 @@ runner.test("should start unsubscribing", () ->
   shove.channel("c1").on("unsubscribing", () ->
     trig = true)
   shove.channel("c1").unsubscribe()
-  shove.channel("c1").state.should.equal(UNSUBSCRIBING_STATE)
-  trig.should.true
+  runner.areEqual(shove.channel("c1").state,UNSUBSCRIBING_STATE)
+  runner.isTrue(trig)
   )
 
 runner.test("should unsubscribe", () ->
@@ -299,8 +261,8 @@ runner.test("should unsubscribe", () ->
     opcode: UNSUBSCRIBE_COMPLETE,
     channel: "c1"
   })
-  shove.channel("c1").state.should.equal(UNSUBSCRIBED_STATE)
-  trig.should.true
+  runner.areEqual(shove.channel("c1").state,UNSUBSCRIBED_STATE)
+  runner.isTrue(trig)
   )
 
 runner.report()
