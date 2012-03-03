@@ -6,30 +6,17 @@
 
 
   <body>
-
-    <div class="tests">
-      <div class="test" id="connect-test"></div>
-    </div>
-    <script type="text/javascript" src="../../shove.min.js"></script>
-    <script type="text/javascript">
     
-    $shove.connect("test");
-
-    $shove.authorize("test");
-
-    channel = $shove.channel("test");
-
-    channel.on("subscribe", function() {
-      console.log("subscribed");
-    });
-
-    channel.on("message", function(msg) {
-      console.log("msg", msg);
-    });
-
-    channel.publish("hi");
-
+    <script type="text/javascript">
+      function require(){
+        return window;
+      }
     </script>
+
+    <script type="text/javascript" src="./shove.js"></script>
+    <script type="text/javascript" src="./runner.js"></script>
+    <script type="text/javascript" src="./shove_specs.js"></script>
+
   </body>
 
 </html>

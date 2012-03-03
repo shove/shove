@@ -1,6 +1,4 @@
 tRunner = require("./runner.coffee")
-
-coffee = require("coffee-script")
 shove  = require("../shove.coffee").$shove
 
 # Opcodes

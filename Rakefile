@@ -76,6 +76,12 @@ task :spec do
   system "coffee specs/shove_specs.coffee"
 end
 
+task :spec_browser do
+  system "coffee -b -c -o ./specs/browser/ ./shove.coffee"
+  system "coffee -b -c -o ./specs/browser/ ./specs/runner.coffee"
+  system "coffee -b -c -o ./specs/browser/ ./specs/shove_specs.coffee"
+end
+
 desc "Watch files and run the spec, coffee --watch on many + run"
 task :autospec => [:spec] do
 

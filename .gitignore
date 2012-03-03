@@ -5,3 +5,5 @@ shove.min.js.gz
 Gemfile.lock
 node_modules
 Markdown.pl
+*.DS_Store
+specs/browser/*.js

@@ -2,6 +2,7 @@ if(typeof exports != "undefined" && exports != null)
   root = exports
 else
   root = window
+  global = window
 
 class TestRunner
   constructor: (trace=false) ->
