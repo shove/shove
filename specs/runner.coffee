@@ -40,10 +40,10 @@ class TestRunner
     @tests++
     try
       fn()
-      console.log(@green("☑ #{@suite} #{name}"));
+      console.log(@green("☑ #{@suite} #{name}"))
     catch err
       @errors++
-      console.log(@red("☒ #{@suite} #{name}"))
+      console.error(@red("☒ #{@suite} #{name}"))
 
       if @trace
         console.log(err.stack)
@@ -52,7 +52,7 @@ class TestRunner
     console.log("-------------------")
     if @errors > 0
 
-      console.log("#{@red('☒')} #{@errors}/#{@tests} tests failed")
+      console.error("#{@red('☒')} #{@errors}/#{@tests} tests failed")
     else
       console.log("#{@green('☑')} All tests passed")
 
