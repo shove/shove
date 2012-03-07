@@ -191,21 +191,20 @@ TransportEvents = [
 # and some other events
 class Transport
 
-  constructor: (@app, @secure) ->
+  constructor: (@app, @secure, @hosts=[]) ->
     @errors = []
     @queue = []
     @state = DISCONNECTED_STATE
     @callbacks = {}
     @connections = 0
     @forcedc = false
-    @hosts = ["shove.dev:9000"]
 
   # Get the URL of the transport
   url: () ->
     "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}"
 
   requestHosts: () ->
-    injectScript("hostlookup", "http://shove.dev:8080/apps/#{@app}/nodes") 
+    injectScript("hostlookup", "http://api.shove.io/apps/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")
@@ -353,14 +352,13 @@ class Client
   # Connect to an app
   # `app` The name of the app
   # `opts` The opts
-  connect: (app, opts) ->
-    @app = app      
+  connect: (@app, opts) ->   
     if opts?
       for own key, val of opts
         @[key] = val
 
     unless @transport && @transport.state == "CONNECTED"
-      @transport = new Transport(@app, @secure)
+      @transport = new Transport(@app, @secure, @hosts)
       @transport.on("failure", () => @trigger("failure"))
       @transport.on("message", (m) => @process(m))
       @transport.on("connecting", () => @trigger("connecting"))
