@@ -460,9 +460,4 @@ class Client
     @trigger("reconnect")
 
 
-
-# (exports ? exports : (window)).$shove = new Client()
-# if window
-#   window.$shove = new Client()
-# else
 root.$shove = new Client()
