@@ -11,7 +11,7 @@ please check out the [shove.io javascript documentation](http://shove.io/documen
 Include the latest stable version of the shove javascript client.
 
 ```html
-<script type="text/javascript" src="http://cdn.shove.io/shove.js"></script>
+<script type="text/javascript" src="http://cdn.shove.io/shove.min.js"></script>
 ```
 
 ## Connect to an App Network
@@ -35,11 +35,12 @@ Allow your client-side app to respond to network connection events with the foll
 + reconnect
 
 ```javascript
-$shove.on('connect',function(){
+$shove.on('connect', function() {
   window.alert('shove network connected');
   return;
 });
-$shove.on('authorize',function(){
+
+$shove.on('authorize', function() {
   window.alert('shove network authorized, feel free to publish to all channels');
   return;
 });
@@ -59,7 +60,7 @@ Channels that do not exist will be created automatically by the Shove server.  B
 ```javascript
 channel = $shove.channel('test-channel');
 channel.subscribe();
-channel.on('subscribe',function(){
+channel.on('subscribe', function() {
   window.alert('you are subscribed to this channel!');
   return;
 });
@@ -84,7 +85,7 @@ Filters are applied to incoming messages before the 'message' event is fired.  M
 ```javascript
 /* Filter replaces occurrences of 'hello' with 'HULLO' within message data strings */
 channel.filter(function(msg){
-  if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
+  if(msg.hasOwnProperty('data') && typeof msg.data == 'string') {
     msg.data = msg.data.replace('hello','HULLO');
   }
   return msg;

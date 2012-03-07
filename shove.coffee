@@ -363,7 +363,6 @@ class Client
       @transport.on("message", (m) => @process(m))
       @transport.on("connecting", () => @trigger("connecting"))
       @transport.on("handshaking", () => @trigger("handshaking"))
-      @transport.on("connect", () => @trigger("connect"))
       @transport.on("disconnect", () => @trigger("disconnect"))
       @transport.on("reconnect", () => @onReconnect())
       @transport.connect(@id)
@@ -427,13 +426,13 @@ class Client
       when CONNECT_GRANTED
         @id = e.data
         @transport.connected(e)
-        @trigger("connect",e.data)
+        @trigger("connect", e.data)
       when SUBSCRIBE_GRANTED
-        chan.trigger("subscribe",e.data)
+        chan.trigger("subscribe", e.data)
       when UNSUBSCRIBE_COMPLETE
-        chan.trigger("unsubscribe",e.data)
+        chan.trigger("unsubscribe", e.data)
       when SUBSCRIBE_DENIED
-        chan.trigger("unauthorized",e.data)
+        chan.trigger("unauthorized", e.data)
       when PUBLISH
         chan.process(e.data, e.from)
       when AUTHORIZE_GRANTED
