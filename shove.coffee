@@ -1,3 +1,5 @@
+# Shove Copyright 2012 Shove under the MIT License <http://www.opensource.org/licenses/mit-license.php>
+
 if(typeof exports != "undefined" && exports != null)
   root = exports
 else
@@ -337,7 +339,7 @@ class Transport
 
 class Client
 
-  Version: "1.0.1",
+  Version: "1.0.1"
 
   constructor: () ->
     @id = null

@@ -7,7 +7,7 @@ Bundler.require
 BUCKET = "shove-cdn"
 
 # Config
-VERSION = "0.8"
+VERSION = File.open("./shove.coffee").read.match(/Version\s*:\s*['"]([.\d]+)['"]/)[1]
 
 # Files to compile
 FILES = [
@@ -66,8 +66,12 @@ end
 def invalidate files
   result = cf.create_invalidation("E8HK41AEIJZNG", :path => files)
   if result
-    Log.info  "Invalidated #{files.join(", ")}"
+    Log.info "Invalidated #{files.join(", ")}"
   end
+end
+
+task :version do
+  Log.info get_version()
 end
 
 task :default => :spec
@@ -122,7 +126,7 @@ task :publish_dev do
   Log.info "Combining..."
   
   content = ""
-  ["lib/swfobject.min.js", "lib/json2.min.js"].each do |src|
+  ["lib/swfobject.js", "lib/json2.min.js"].each do |src|
     content << File.open(src).read
     content << "\n"
   end
@@ -143,36 +147,64 @@ end
 desc "Build the js file for production"
 task :combine do
   Log.info "Combining..."
+  
+  file_source = "shove.coffee"
+  file_js = "shove.js"
+  file_combined = "#{OUT_DIR}/shove.dev.js"
+  
   unless Dir.exists?(OUT_DIR)
     Dir.mkdir(OUT_DIR)
   end
   
-  system "coffee --compile shove.coffee"
+  system "coffee --bare --compile #{file_source}"
   
   combine = "(function(root) {"
   
   [
     "lib/json2.js",
     "lib/swfobject.js",
-    "lib/websocket.js",
-    "shove.js"
-  ].each do |file|
-    combine << File.open(file).read
-    combine << "\n"
+    "lib/web_socket.js",
+    file_js
+  ].each do |f|
+    combine << File.open(f).read
+    combine << "\n\n"
   end
   combine << "})(window);"
+  
+  combine.gsub! "localhost:8888/lib", "cdn.shove.io"
+  combine.gsub! "shove.dev:8000", "api.shove.io"
+  combine.gsub! "shove.dev:9000", "api.shove.io"
+  
+  File.open(file_combined,"w") do |f|
+    f << combine
+  end
 
+  Log.info "...Combining Done!"
+end
+
+task :minify => [:combine] do
   Log.info "Minifying..."
+  
+  unless Dir.exists?(OUT_DIR)
+    Dir.mkdir(OUT_DIR)
+  end
 
-  File.open("shove.min.js", "w") do |f|
+  file_combined = "#{OUT_DIR}/shove.dev.js"
+  file_minified = "#{OUT_DIR}/shove.min.js"
+  file_compressed = "#{OUT_DIR}/shove.min.js.gz"
+  
+  combine = File.open(file_combined).read
+
+  File.open(file_minified, "w") do |f|
     f << YUICompressor.compress_js(combine, :munge => true)
+    f << "\n//Shove v#{VERSION} Copyright 2012 Shove under the MIT License <http://www.opensource.org/licenses/mit-license.php>\n"
   end
 
   Log.info "Compressing..."
 
-  system "gzip -1 -c shove.min.js > shove.min.js.gz"
-
-  Log.info "Done!"
+  system "gzip -1 -c #{file_minified} > #{file_compressed}"
+  
+  Log.info "... Minifying Done!"
 end
 
 desc "Build the js file for production"
@@ -194,13 +226,13 @@ task :build do
   # Clean up the links
   js = File.open(target).read
   js.gsub! "localhost:8888/lib", "cdn.shove.io"
-  js.gsub! "shove.dev:8000", "api.shove.io"   
+  js.gsub! "shove.dev:8000", "api.shove.io"
   js = YUICompressor.compress_js(js, :munge => true)
 
   Log.info "Combining..."
   
   File.open(target_compressed, "w") do |f|
-    ["lib/swfobject.min.js", "lib/json2.min.js", "lib/websocket.js"].each do |src|
+    ["lib/swfobject.js", "lib/json2.min.js", "lib/web_socket.min.js"].each do |src|
       f << File.open(src).read
       f << "\n"
     end
@@ -211,20 +243,50 @@ task :build do
 end
 
 desc "Publish the result javascript code to S3 and invalidate CF cache"
-task :publish => [:build] do
+task :publish => [:combine] do
 
   Log.info "Deploying to #{BUCKET}..."
+  
+  files = [
+      {
+        :local => "#{OUT_DIR}/shove.dev.js",
+        :remote => "shove.js",
+        :headers => {"Content-Type" => "text/javascript"}
+      },
+      {
+        :local => "#{OUT_DIR}/shove.min.js",
+        :remote => "shove.min.js",
+        :headers => {"Content-Type" => "text/javascript"}
+      },
+      {
+        :local => "#{OUT_DIR}/shove.min.js.gz",
+        :remote => "shove.min.js.gz",
+        :headers => {"Content-Type" => "application/x-gzip"}
+      }
+    ]
+  
+  files.each do |f|
+    content = File.open(f[:local]).read
+    
+    publish(f[:remote],content,f[:headers])
+    publish("#{VERSION}/#{f[:remote]}",content,f[:headers])
+    
+    # invalidate(["/#{f[:remote]}","/#{VERSION}/#{f[:remote]}"])
+  end
+  invalidate(files.collect {|f| f.remove})
+  
+  
 
-  content = File.open("#{OUT_DIR}/shove.min.js").read
-
-  headers = {
-    "Content-Type" => "text/javascript"
-  }
-
-  publish("shove.js", content, headers)
-  publish("shove-#{VERSION}.js", content, headers)
-
-  invalidate(["/shove.js", "/shove-#{VERSION}.js"])
+  # content = File.open("#{OUT_DIR}/shove.min.js").read
+  # 
+  # headers = {
+  #   "Content-Type" => "text/javascript"
+  # }
+  # 
+  # publish("shove.js", content, headers)
+  # publish("shove-#{VERSION}.js", content, headers)
+  # 
+  # invalidate(["/shove.js", "/shove-#{VERSION}.js"])
 
 end
 
