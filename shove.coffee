@@ -187,6 +187,19 @@ TransportEvents = [
   "handshaking"
 ]
 
+
+injectScript = (id, url) ->
+  head = document.getElementsByTagName("head")[0]
+  script = document.createElement("script")
+  script.setAttribute("src", url)
+  script.setAttribute("type", "text/javascript")
+  script.setAttribute("id", id)
+  head.appendChild(script)
+
+removeScript = (id) ->
+  head = document.getElementsByTagName("head")[0]
+  head.removeChild(document.getElementById(id))
+
 # Transport class, abstracts the WebSocket
 # and some other events
 class Transport
@@ -299,7 +312,7 @@ class Transport
       @state = FAILURE_STATE
 
     # do a host lookup
-    unless @hosts
+    if @hosts.length == 0
       @trigger("hostlookup")
       @requestHosts()
       return
@@ -348,6 +361,7 @@ class Client
     @listeners = {}
     @channels = {}
     @authorized = false
+    @hosts = []
     
   # Connect to an app
   # `app` The name of the app
