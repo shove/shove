@@ -39,6 +39,19 @@ PRESENCE_UNSUBSCRIBED = 0x71
 PRESENCE_LIST = 0x72
 
 #
+# Debug
+#
+
+debugging = false
+
+shoveLog = (args...) ->
+  console.log.apply(console,[this.constructor.name,"|"].concat(args))
+
+debugLog = (context,args...) ->
+  if context.debugging()
+    shoveLog.apply(context,args)
+
+#
 # Channel
 #
 
@@ -67,6 +80,9 @@ class Channel
     @on("unsubscribing" , (e) => @state = UNSUBSCRIBING_STATE)
     @on("unauthorized"  , (e) => @state = UNAUTHORIZED_STATE)
     @ready = true
+  
+  debugging: () ->
+    debugging
 
   # Bind a function to an event
   # The function will be called when
@@ -81,6 +97,7 @@ class Channel
       @events[event].push(cb)
       if @state == UNSUBSCRIBED_STATE && @ready
         @subscribe()
+    debugLog(this,"on; bind event",event,@events[event])
     this
   
   # Trigger an event
@@ -88,6 +105,7 @@ class Channel
     if @events.hasOwnProperty(event)
       for cb in @events[event]
         cb.apply(root, args)
+    debugLog(this,"trigger; event",event)
     this
 
   
@@ -115,6 +133,7 @@ class Channel
       channel: @name,
       data: message
     })
+    debugLog(this,"publish",message)
     this
 
   # Unsubscribe from this channel
@@ -134,6 +153,7 @@ class Channel
       channel: @name
     })
     this
+
 
   unsubscribed: ->
     @state  = UNSUBSCRIBED_STATE
@@ -211,6 +231,9 @@ class Transport
     @callbacks = {}
     @connections = 0
     @forcedc = false
+
+  debugging: () ->
+    debugging
 
   # Get the URL of the transport
   url: () ->
@@ -362,11 +385,22 @@ class Client
     @channels = {}
     @authorized = false
     @hosts = []
+  
+  debugging: () ->
+    debugging
+
+  enableDebugging: () ->
+    debugging = true
+    this
+  
+  disableDebugging: () ->
+    debugging = false
+    this
     
   # Connect to an app
   # `app` The name of the app
   # `opts` The opts
-  connect: (@app, opts) ->   
+  connect: (@app, opts) ->
     if opts?
       for own key, val of opts
         @[key] = val
@@ -380,11 +414,15 @@ class Client
       @transport.on("disconnect", () => @trigger("disconnect"))
       @transport.on("reconnect", () => @onReconnect())
       @transport.connect(@id)
+
+    debugLog(this,"connect",arguments)
+    
     this
        
   # Disconnect from current app
   disconnect: () ->
     @transport.disconnect()
+    debugLog(this,"disconnect")
     this
 
   # Return a channel object for a given app
@@ -404,6 +442,7 @@ class Client
     unless @listeners.hasOwnProperty(event)
       @listeners[event] = []
     @listeners[event].push(cb)
+    debugLog(this,"on; bind event",event,@listeners[event])
     this
 
   # The identity of the current shove session
@@ -431,7 +470,8 @@ class Client
     })
     this
 
-  setHosts: (hosts) -> @transport.updateHosts(hosts)
+  setHosts: (hosts) ->
+    @transport.updateHosts(hosts)
 
   # Process a shove message
   process: (e) ->
@@ -441,25 +481,33 @@ class Client
         @id = e.data
         @transport.connected(e)
         @trigger("connect", e.data)
+        debugLog(this,"process; CONNECT_GRANTED",@id)
       when SUBSCRIBE_GRANTED
         chan.trigger("subscribe", e.data)
+        debugLog(this,"process; SUBSCRIBE",chan.name)
       when UNSUBSCRIBE_COMPLETE
         chan.trigger("unsubscribe", e.data)
+        debugLog(this,"process; UNSUBSCRIBE_COMPLETE",chan.name)
       when SUBSCRIBE_DENIED
         chan.trigger("unauthorized", e.data)
+        debugLog(this,"process; SUBSCRIBE_DENIED",chan.name)
       when PUBLISH
         chan.process(e.data, e.from)
+        debugLog(this,"process; PUBLISH",chan.name,e.from,e.data)
       when AUTHORIZE_GRANTED
         @authorized = true
         @trigger("authorize", e.data)
+        debugLog(this,"process; AUTHORIZE_GRANTED")
       when AUTHORIZE_DENIED
         @authorized = false
         @trigger("authorize_denied")
+        debugLog(this,"process; AUTHORIZE_DENIED")
       when ERROR
         console.error(e.data)
       else
         return
     this
+    
 
   # Dispatch event to listeners
   trigger: (event, args...) ->

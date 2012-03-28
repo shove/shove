@@ -78,9 +78,12 @@ runner.describe("Shove")
 runner.test("should have a version", () ->
   runner.exists(shove.Version))
 
+runner.test("Should enable debugging",() ->
+  shove.enableDebugging()
+  runner.isTrue(shove.debugging()))
 
 runner.test("should attempt to connect", () ->
-  shove.connect("app")
+  shove.connect("app",{hosts:"app-aspen-1.shove.io"})
   runner.areEqual(shove.app,"app")
   runner.exists(shove.transport))
 
