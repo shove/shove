@@ -8,3 +8,4 @@ node_modules
 Markdown.pl
 *.DS_Store
 specs/browser/*.js
+npm-debug.log

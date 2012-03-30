@@ -67,12 +67,14 @@ class Channel
     @state    = UNSUBSCRIBED_STATE
     @filters  = []
     @events   = {
-      "message"       : []
-      "subscribing"   : []
-      "subscribe"     : []
-      "unsubscribing" : []
-      "unsubscribe"   : []
-      "unauthorized"  : []
+      "message"         : []
+      "subscribing"     : []
+      "subscribe"       : []
+      "unsubscribing"   : []
+      "unsubscribe"     : []
+      "unauthorized"    : []
+      "publish_granted" : []
+      "publish_denied"  : []
     }
     @on("subscribing"   , (e) => @state = SUBSCRIBING_STATE)
     @on("subscribe"     , (e) => @state = SUBSCRIBED_STATE)
@@ -121,6 +123,13 @@ class Channel
     @trigger("message", data, from)
     this
   
+  
+  authorize: (@key) ->
+    @transport.send({
+      opcode: AUTHORIZE,
+      channel: @name,
+      data: @key
+    })
   
     
   # Publish an event and message on this
@@ -477,11 +486,13 @@ class Client
   process: (e) ->
     chan = @channels[e.channel]
     switch e.opcode
+      
       when CONNECT_GRANTED
         @id = e.data
         @transport.connected(e)
         @trigger("connect", e.data)
         debugLog(this,"process; CONNECT_GRANTED",@id)
+        
       when SUBSCRIBE_GRANTED
         chan.trigger("subscribe", e.data)
         debugLog(this,"process; SUBSCRIBE",chan.name)
@@ -491,17 +502,32 @@ class Client
       when SUBSCRIBE_DENIED
         chan.trigger("unauthorized", e.data)
         debugLog(this,"process; SUBSCRIBE_DENIED",chan.name)
+      
       when PUBLISH
         chan.process(e.data, e.from)
         debugLog(this,"process; PUBLISH",chan.name,e.from,e.data)
+      when PUBLISH_GRANTED
+        chan.trigger("publish_granted",e.data)
+        debugLog(this,"process; PUBLISH_GRANTED",chan.name,e.data)
+      when PUBLISH_DENIED
+        chan.trigger("publish_denied", e.data)
+        debugLog(this,"process; PUBLISH_DENIED",chan.name,e.data)
+      
       when AUTHORIZE_GRANTED
-        @authorized = true
-        @trigger("authorize", e.data)
-        debugLog(this,"process; AUTHORIZE_GRANTED")
+        if typeof chan != 'undefined'
+          chan.trigger("publish_granted",e.data)
+        else
+          @authorized = true
+          @trigger("authorize", e.data)
+        debugLog(this,"process; AUTHORIZE_GRANTED",chan,e.data)
       when AUTHORIZE_DENIED
-        @authorized = false
-        @trigger("authorize_denied")
-        debugLog(this,"process; AUTHORIZE_DENIED")
+        if typeof chan != 'undefined'
+          chan.trigger("authorize_denied",e.data)
+        else
+          @authorized = false
+          @trigger("authorize_denied")
+        debugLog(this,"process; AUTHORIZE_DENIED",chan,e.data)
+      
       when ERROR
         console.error(e.data)
       else

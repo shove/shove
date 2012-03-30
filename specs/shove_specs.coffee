@@ -42,6 +42,9 @@ UNAUTHORIZED_STATE = 0x5
 
 errors = 0
 
+filter = (m) ->
+  "!#{m}!"
+
 # Ref the active backdoor websocket
 backdoor = null
 
@@ -82,11 +85,15 @@ runner.test("Should enable debugging",() ->
   shove.enableDebugging()
   runner.isTrue(shove.debugging()))
 
+runner.test("should disable debugging",() ->
+  shove.disableDebugging()
+  runner.isTrue(!shove.debugging())
+  )
+
 runner.test("should attempt to connect", () ->
   shove.connect("app",{hosts:"app-aspen-1.shove.io"})
   runner.areEqual(shove.app,"app")
   runner.exists(shove.transport))
-
 
 runner.test("should attempt to connect", () ->
   trig = false
@@ -229,20 +236,82 @@ runner.test("should run messages through filters", () ->
 
   c = shove.channel("c1")
 
-  c.filter((m_) ->
-    "!#{m_}!")
+  c.filter(filter)
 
   m = null
   c.on("message", (m_) ->
     m = m_)
 
+  tm = "test"
   backdoor.inject({
     opcode: PUBLISH,
     channel: "c1",
-    data: "test"
+    data: tm
   })
 
-  runner.areEqual(m,"!test!")
+  runner.areEqual(filter(tm),m)
+  )
+
+runner.test("should handle publish_denied event", () ->
+  cn = "c1"
+  tm = "test message, should be denied"
+  
+  c = shove.channel(cn)
+  
+  pubDenied = false
+  c.on("publish_denied", (m_) ->
+    pubDenied = true)
+  
+  c.publish(tm)
+  
+  backdoor.inject({
+    opcode: PUBLISH_DENIED,
+    channel: cn
+  })
+  
+  runner.isTrue(pubDenied)
+  
+  )
+
+runner.test("should handle publish_granted event", () ->
+  cn = "c1"
+  cKey = "c1-key"
+  
+  c = shove.channel(cn)
+  
+  pubGranted = false
+  c.on("publish_granted",(m_) ->
+    pubGranted = true)
+  
+  c.authorize(cKey)
+  
+  backdoor.inject({
+    opcode: AUTHORIZE_GRANTED,
+    channel: cn
+  })
+  
+  runner.isTrue(pubGranted)
+  )
+
+runner.test("should receive published message",() ->
+  cn = "c1"
+  c = shove.channel(cn)
+  tm = "test message, should be received"
+  m = null
+
+  c.on("message", (m_) ->
+    m = m_
+    )
+  
+  c.publish(tm)
+  
+  backdoor.inject({
+    opcode: PUBLISH,
+    channel: cn,
+    data: tm
+  })
+  
+  runner.areEqual(filter(tm),m)
   )
 
 runner.test("should start unsubscribing", () ->
