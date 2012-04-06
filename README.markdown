@@ -46,7 +46,7 @@ $shove.on('authorize', function() {
 });
 ```
 
-### Unbind handlers to shove app networks
+### Unbind handlers from shove app networks
 
 In the case of removing bound event handlers, the original function must be used for comparison.
 
