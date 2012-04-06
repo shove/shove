@@ -189,6 +189,8 @@ class Channel
   #
   # `fn` fn The filter function to call
   filter: (fn) ->
+    if typeof fn != 'function'
+      return @filters
     @filters.push(fn)
     this
 
@@ -383,7 +385,7 @@ class Transport
 
 class Client
 
-  Version: "1.0.1"
+  Version: "1.0.2"
 
   constructor: () ->
     @id = null
@@ -452,6 +454,16 @@ class Client
       @listeners[event] = []
     @listeners[event].push(cb)
     debugLog(this,"on; bind event",event,@listeners[event])
+    this
+  
+  # Remove an app event listener
+  # 'event' the name of the event
+  # 'cb' the original callback function
+  off: (event, cb) ->
+    if @listeners.hasOwnProperty(event)
+      for cbi in [(@listeners[event].length-1)..0]
+        if @listeners[event][cbi] == cb
+          @listeners[event].splice(cbi,1)
     this
 
   # The identity of the current shove session
