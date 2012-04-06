@@ -46,6 +46,19 @@ $shove.on('authorize', function() {
 });
 ```
 
+### Unbind handlers to shove app networks
+
+In the case of removing bound event handlers, the original function must be used for comparison.
+
+```javascript
+var fn = function(){
+  window.alert('Shove Connected!');
+  return true;
+};
+$shove.on('connect',fn);
+$shove.off('connect',fn);
+```
+
 ### Subscribe to an App's Channel
 
 Channels that do not exist will be created automatically by the Shove server.  Bind handlers using the following event types:
@@ -78,7 +91,7 @@ A client will cease to receive messages from a channel when unsubscribed.
 channel.unsubscribe();
 ```
 
-#### Add filters to easily modify incoming messages
+### Add filters to easily modify incoming messages
 
 Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
 
@@ -106,6 +119,14 @@ channel.on('message',function(msg){
 });
 ```
 
+### Access to active filters
+
+An array of bound filter functions can be obtained by omitting a function argument.
+
+```javascript
+window.alert(channel.filter().length + ' filters are currently in the message pipeline.');
+```
+
 ### Self Authorize
 
 In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
@@ -117,12 +138,22 @@ $shove.authorize();
 
 #### Publish Messages
 
-Messages can be simple strings or numbers or even complex objects and arrays.
+If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages can be simple strings or numbers or even complex objects and arrays.
 
 ```javascript
 channel.publish('message here');
 channel.publish({
   foo:'bar',
   arr:[4,5,6]
+});
+```
+
+If publishing messages is denied, the user can request authorization on any given channel.  The ```javascript'channel-key'``` shall be provided by the client application.
+
+```javascript
+channel.authorize('channel-key');
+channel.on('publish_granted',function(){
+  window.alert('publishing on channel:' + channel.name + ' has been granted');
+  // start sending messages or process a queue of messages
 });
 ```
