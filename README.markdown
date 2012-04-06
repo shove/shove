@@ -148,7 +148,7 @@ channel.publish({
 });
 ```
 
-If publishing messages is denied, the user can request authorization on any given channel.  The ```javascript'channel-key'``` shall be provided by the client application.
+If publishing messages is denied, the user can request authorization on any given channel.  The `'channel-key'` shall be provided by the client application.
 
 ```javascript
 channel.authorize('channel-key');
