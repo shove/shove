@@ -365,7 +365,7 @@ class Transport extends Dispatcher
 
 class Client extends Dispatcher
 
-  Version: "1.0.2"
+  Version: "1.0.3"
 
   constructor: () ->
     super ["failure","connecting","handshaking","disconnect","connect","authorize","authorize_denied","reconnect"]
