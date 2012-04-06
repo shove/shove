@@ -62,6 +62,10 @@ class Dispatcher
     for e in allowedEvents
       @events[e] = []
     
+  # Bind events
+  # will give an error and will not bind if event name is not allowed
+  # e: event name
+  # cb: callback function
   on: (e,cb) ->
     unless @events.hasOwnProperty(e)
       console.error("Invalid event binding.  '#{e}' not found in '#{Object.keys(@events).join(', ')}'")
@@ -76,6 +80,9 @@ class Dispatcher
         return @events[e]
     this
 
+  # Unbind events
+  # e: event name
+  # cb: original callback function
   off: (e,cb) ->
     if @events.hasOwnProperty(e)
       for cbi in [(@events[e].length-1)..0]
@@ -83,6 +90,9 @@ class Dispatcher
           @events[e].splice(cbi,1)
     this
 
+  # Trigger events
+  # e: event name
+  # args...: arguments to be passed to callback functions
   trigger: (e,args...) ->
     if @events.hasOwnProperty(e)
       for cb in @events[e]
@@ -141,7 +151,8 @@ class Channel extends Dispatcher
     @trigger("message", data, from)
     this
   
-  
+  # Authorize user to publish to channel
+  # key: unique key required to authorize
   authorize: (@key) ->
     @transport.send({
       opcode: AUTHORIZE,
@@ -180,7 +191,6 @@ class Channel extends Dispatcher
       channel: @name
     })
     this
-
 
   unsubscribed: ->
     @state  = UNSUBSCRIBED_STATE
