@@ -51,6 +51,46 @@ debugLog = (context,args...) ->
   if context.debugging()
     shoveLog.apply(context,args)
 
+# 
+# Dispatcher
+# 
+# contains methods for use in binding, unbinding and 
+# triggering events
+class Dispatcher
+  constructor: (allowedEvents) ->
+    @events = {}
+    for e in allowedEvents
+      @events[e] = []
+    
+  on: (e,cb) ->
+    unless @events.hasOwnProperty(e)
+      console.error("Invalid event binding.  '#{e}' not found in '#{Object.keys(@events).join(', ')}'")
+      return false
+    else
+      if typeof cb == 'function'
+        unless @events[e].length > 0
+          @events[e] = []
+        @events[e].push(cb)
+        debugLog(this,"on; bind event:",e,@events[e])
+      else
+        return @events[e]
+    this
+
+  off: (e,cb) ->
+    if @events.hasOwnProperty(e)
+      for cbi in [(@events[e].length-1)..0]
+        if @events[e][cbi] == cb
+          @events[e].splice(cbi,1)
+    this
+
+  trigger: (e,args...) ->
+    if @events.hasOwnProperty(e)
+      for cb in @events[e]
+        cb.apply(root,args)
+      debugLog(this,"trigger; event:",e)
+    this
+
+
 #
 # Channel
 #
@@ -61,21 +101,12 @@ UNSUBSCRIBED_STATE = 0x3
 UNSUBSCRIBING_STATE = 0x4
 UNAUTHORIZED_STATE = 0x5
 
-class Channel
+class Channel extends Dispatcher
 
   constructor: (@name, @transport) ->
+    super ["message","subscribing","subscribe","unsubscribing","unsubscribe","unauthorized","publish_granted","publish_denied"]
     @state    = UNSUBSCRIBED_STATE
     @filters  = []
-    @events   = {
-      "message"         : []
-      "subscribing"     : []
-      "subscribe"       : []
-      "unsubscribing"   : []
-      "unsubscribe"     : []
-      "unauthorized"    : []
-      "publish_granted" : []
-      "publish_denied"  : []
-    }
     @on("subscribing"   , (e) => @state = SUBSCRIBING_STATE)
     @on("subscribe"     , (e) => @state = SUBSCRIBED_STATE)
     @on("unsubscribe"   , (e) => @unsubscribed())
@@ -92,24 +123,11 @@ class Channel
   # is received
   # `event` the event to trigger on
   # `cb` the callback to execute on trigger
-  on: (event, cb) ->
-    unless @events.hasOwnProperty(event)
-      console.error("Illegal event '#{event}' defined on shove channel")
-    else
-      @events[event].push(cb)
-      if @state == UNSUBSCRIBED_STATE && @ready
-        @subscribe()
-    debugLog(this,"on; bind event",event,@events[event])
-    this
-  
-  # Trigger an event
-  trigger: (event, args...) ->
-    if @events.hasOwnProperty(event)
-      for cb in @events[event]
-        cb.apply(root, args)
-    debugLog(this,"trigger; event",event)
-    this
-
+  on: (e,cb) ->
+    r = super(e,cb)
+    if @events.hasOwnProperty(e) && @state == UNSUBSCRIBED_STATE && @ready
+      @subscribe()
+    r
   
   # Process an event to all bound listeners
   # `message` the data package
@@ -205,20 +223,6 @@ DISCONNECTED_STATE = 0x3
 HANDSHAKING_STATE = 0x4
 FAILURE_STATE = 0x5
 
-# Available events
-TransportEvents = [
-  "connect"
-  "connecting"
-  "disconnect"
-  "message"
-  "reconnect"
-  "error"
-  "statechange"
-  "failure"
-  "handshaking"
-]
-
-
 injectScript = (id, url) ->
   head = document.getElementsByTagName("head")[0]
   script = document.createElement("script")
@@ -233,9 +237,10 @@ removeScript = (id) ->
 
 # Transport class, abstracts the WebSocket
 # and some other events
-class Transport
+class Transport extends Dispatcher
 
   constructor: (@app, @secure, @hosts=[]) ->
+    super ["connect","connecting","disconnect","message","reconnect","error","statechange","failure","handshaking"]
     @errors = []
     @queue = []
     @state = DISCONNECTED_STATE
@@ -264,24 +269,6 @@ class Transport
   host: ->
     @hosts[@connections % @hosts.length]
 
-  # Bind an event to a function callback
-  # `event` options:
-  # connect
-  # connecting
-  # disconnect
-  # message
-  # reconnect
-  # reconnecting
-  # error
-  # `cb` the callback to execute on event
-  on: (event, cb) ->
-    if TransportEvents.indexOf(event) == -1
-      console.error("Unknown event #{event}.  Valid events: #{TransportEvents.join(", ")}")
-    else
-      unless @callbacks[event]
-        @callbacks[event] = []
-      @callbacks[event].push(cb)
-
   # Send data on the transport
   # `data` - the data to send
   send: (data) ->
@@ -292,13 +279,6 @@ class Transport
     this
               
   #### Private methods
-
-  # trigger an event to all bound callbacks
-  trigger: (event, args...) ->
-    if @callbacks[event]
-      for callback in @callbacks[event]
-        callback.apply(root, args)
-    this
           
   opened: () ->
     @trigger("connecting")
@@ -383,16 +363,16 @@ class Transport
 # Client
 #
 
-class Client
+class Client extends Dispatcher
 
   Version: "1.0.2"
 
   constructor: () ->
+    super ["failure","connecting","handshaking","disconnect","connect","authorize","authorize_denied","reconnect"]
     @id = null
     @app = null
     @secure = false
     @transport = null
-    @listeners = {}
     @channels = {}
     @authorized = false
     @hosts = []
@@ -445,26 +425,6 @@ class Client
       channel = new Channel(name,@transport)
       @channels[name] = channel
     channel
-
-  # Add a app event listener
-  # `event` The name of the event
-  # `cb` The callback function to call
-  on: (event, cb) ->
-    unless @listeners.hasOwnProperty(event)
-      @listeners[event] = []
-    @listeners[event].push(cb)
-    debugLog(this,"on; bind event",event,@listeners[event])
-    this
-  
-  # Remove an app event listener
-  # 'event' the name of the event
-  # 'cb' the original callback function
-  off: (event, cb) ->
-    if @listeners.hasOwnProperty(event)
-      for cbi in [(@listeners[event].length-1)..0]
-        if @listeners[event][cbi] == cb
-          @listeners[event].splice(cbi,1)
-    this
 
   # The identity of the current shove session
   identity: () ->
@@ -546,14 +506,6 @@ class Client
         return
     this
     
-
-  # Dispatch event to listeners
-  trigger: (event, args...) ->
-    if @listeners[event]
-      for callback in @listeners[event]
-        callback.apply(root, args)
-    this
-  
   onReconnect: () ->
     for name, channel of @channels
       channel.subscribe()

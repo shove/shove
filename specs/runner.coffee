@@ -5,10 +5,9 @@ else
   global = window
 
 class TestRunner
-  constructor: (trace=false) ->
+  constructor: (@trace=false) ->
     @errors = 0
     @tests = 0
-    @trace = trace
     @suite = ""
 
   describe: (text) ->
@@ -45,7 +44,7 @@ class TestRunner
       @errors++
       console.error(@red("☒ #{@suite} #{name}"))
 
-      if @trace
+      if @trace && err.hasOwnProperty('stack')
         console.log(err.stack)
 
   report: () ->

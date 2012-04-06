@@ -90,6 +90,25 @@ runner.test("should disable debugging",() ->
   runner.isTrue(!shove.debugging())
   )
 
+runner.test "should fail in attempt to bind to unknown events",() ->
+  fn = () ->
+    return 0
+  result = shove.on("non_event",fn)
+  runner.isTrue(!result)
+
+runner.test "should remove bound event callbacks",() ->
+  e = "connect"
+  fn = () ->
+    return 0
+  shove.on e,fn
+  shove.off e,fn
+  callbackExists = false
+  for cb in shove.events[e]
+    if cb == fn
+      callbackExists = true
+      break
+  runner.isTrue !callbackExists
+
 runner.test("should attempt to connect", () ->
   shove.connect("app",{hosts:"app-aspen-1.shove.io"})
   runner.areEqual(shove.app,"app")
@@ -171,6 +190,26 @@ runner.test("should start subscribing to a channel", () ->
   runner.areEqual(shove.channel("c1").state,SUBSCRIBING_STATE)
   runner.isTrue(trig)
   )
+
+runner.test "should fail in attempt to bind to unknown events", () ->
+  fn = () ->
+    return 0
+  result = shove.channel("c1").on("non_event",fn)
+  runner.isTrue(!result)
+
+runner.test "should remove bound event callbacks", () ->
+  c = "c1"
+  e = "subscribe"
+  fn = () ->
+    return 0
+  shove.channel(c).on e,fn
+  shove.channel(c).off e,fn
+  callbackExists = false
+  for cb in shove.channel(c).events[e]
+    if cb == fn
+      callbackExists = true
+      break
+  runner.isTrue !callbackExists
 
 runner.test("should handle unauthorized event", () ->
   trig = false
