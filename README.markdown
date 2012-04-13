@@ -160,7 +160,9 @@ channel.publish(JSON.stringify(complexMessage));
 A filter can be applied to all incoming messages to handle the decoding of data.
 
 ```javascript
-channel.filter(function(m){return JSON.parse(m);});
+channel.filter(function(m){
+  return JSON.parse(m);
+});
 ```
 
 Or if not all messages need to be complex objects then perhaps multiple channels should be used.
@@ -181,7 +183,9 @@ complexChan.on("message",function(message,from){
 
 simpleChan.publish("simple messages abound!");
 
-complexChan.filter(function(m){return JSON.parse(m);});
+complexChan.filter(function(m){
+  return JSON.parse(m);
+});
 complexChan.publish(JSON.stringify({x:0,y:100,l:42}));
 ```
 
