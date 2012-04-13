@@ -28,20 +28,23 @@ $shove.connect('test-network');
 
 Allow your client-side app to respond to network connection events with the following types:
 
-+ connecting
-+ connect
-+ disconnect
 + authorize
++ authorize_denied
++ connect
++ connecting
++ disconnect
++ handshaking
++ failure
 + reconnect
 
 ```javascript
 $shove.on('connect', function() {
-  window.alert('shove network connected');
+  console.log('shove network connected');
   return;
 });
 
 $shove.on('authorize', function() {
-  window.alert('shove network authorized, feel free to publish to all channels');
+  console.log('shove network authorized, feel free to publish to all channels');
   return;
 });
 ```
@@ -52,7 +55,7 @@ In the case of removing bound event handlers, the original function must be used
 
 ```javascript
 var fn = function(){
-  window.alert('Shove Connected!');
+  console.log('Shove Connected!');
   return true;
 };
 $shove.on('connect',fn);
@@ -64,21 +67,23 @@ $shove.off('connect',fn);
 Channels that do not exist will be created automatically by the Shove server.  Bind handlers using the following event types:
 
 + message
-+ subscribing
++ publish_denied
++ publish_granted
 + subscribe
-+ unsubscribing
-+ unsubscribe
++ subscribing
 + unauthorized
++ unsubscribe
++ unsubscribing
 
 ```javascript
 channel = $shove.channel('test-channel');
 channel.subscribe();
 channel.on('subscribe', function() {
-  window.alert('you are subscribed to this channel!');
+  console.log('you are subscribed to this channel!');
   return;
 });
 channel.on('unauthorized',function(){
-  window.alert('channel subscribed failed, not authorized!');
+  console.log('channel subscribed failed, not authorized!');
   return;
 });
 ```
@@ -124,7 +129,7 @@ channel.on('message',function(msg){
 An array of bound filter functions can be obtained by omitting a function argument.
 
 ```javascript
-window.alert(channel.filter().length + ' filters are currently in the message pipeline.');
+console.log(channel.filter().length + ' filters are currently in the message pipeline.');
 ```
 
 ### Self Authorize
@@ -142,18 +147,14 @@ If publishing is allowed on all channels by default, or if the client applicatio
 
 ```javascript
 channel.publish('message here');
-channel.publish({
-  foo:'bar',
-  arr:[4,5,6]
-});
 ```
 
-If publishing messages is denied, the user can request authorization on any given channel.  The `'channel-key'` shall be provided by the client application.
+If publishing messages is denied, the user can request authorization on any given channel.  The `'channel-key'` shall be provided by the client application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
 
 ```javascript
 channel.authorize('channel-key');
 channel.on('publish_granted',function(){
-  window.alert('publishing on channel:' + channel.name + ' has been granted');
+  console.log('publishing on channel:' + channel.name + ' has been granted');
   // start sending messages or process a queue of messages
 });
 ```
