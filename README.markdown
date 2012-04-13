@@ -144,10 +144,45 @@ console.log(channel.filter().length + ' filters are currently in the message pip
 
 ### <a name="channel_publish" />Publish Messages
 
-If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages can be simple strings or numbers or even complex objects and arrays.
+If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages should be simple strings, if a message needs to be more complex use `JSON.stringify()` and `JSON.parse()` to encode and decode objects.
 
 ```javascript
 channel.publish('message here');
+
+var complexMessage = {
+  x:0,
+  y:100,
+  l:42
+};
+channel.publish(JSON.stringify(complexMessage));
+```
+
+A filter can be applied to all incoming messages to handle the decoding of data.
+
+```javascript
+channel.filter(function(m){return JSON.parse(m);});
+```
+
+Or if not all messages need to be complex objects then perhaps multiple channels should be used.
+
+```javascript
+simpleChan = $shove.channel("channel-a");
+complexChan = $shove.channel("channel-b");
+
+simpleChan.on("message",function(message,from){
+  // handle incoming simple (string) messages
+  console.log(typeof message);
+});
+
+complexChan.on("message",function(message,from){
+  // handle incoming object messages
+  console.log(typeof message);
+})
+
+simpleChan.publish("simple messages abound!");
+
+complexChan.filter(function(m){return JSON.parse(m);});
+complexChan.publish(JSON.stringify({x:0,y:100,l:42}));
 ```
 
 If publishing messages is denied, the user can request authorization on any given channel.  The `channel-key` shall be provided by the client application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
