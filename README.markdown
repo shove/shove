@@ -62,7 +62,17 @@ $shove.on('connect',fn);
 $shove.off('connect',fn);
 ```
 
-### <a name="channel_subscribe" />Subscribe to an App's Channel
+### <a name="shove_authorize" />Self Authorize
+
+In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
+
+```javascript
+$shove.app_key = 'test-network-app-key';
+$shove.authorize();
+```
+
+## <a name="channels" />Channels
+### <a name="channel_subscribe" />Subscribe
 
 Channels that do not exist will be created automatically by the Shove server.  Bind handlers using the following event types:
 
@@ -132,16 +142,7 @@ An array of bound filter functions can be obtained by omitting a function argume
 console.log(channel.filter().length + ' filters are currently in the message pipeline.');
 ```
 
-### <a name="shove_authorize" />Self Authorize
-
-In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
-
-```javascript
-$shove.app_key = 'test-network-app-key';
-$shove.authorize();
-```
-
-#### <a name="channel_publish" />Publish Messages
+### <a name="channel_publish" />Publish Messages
 
 If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages can be simple strings or numbers or even complex objects and arrays.
 
