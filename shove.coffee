@@ -114,14 +114,14 @@ UNAUTHORIZED_STATE = 0x5
 class Channel extends Dispatcher
 
   constructor: (@name, @transport) ->
-    super ["message","subscribing","subscribe","unsubscribing","unsubscribe","unauthorized","publish_granted","publish_denied"]
+    super ["message","subscribing","subscribe","unsubscribing","unsubscribe","subscribe_denied","publish_granted","publish_denied"]
     @state    = UNSUBSCRIBED_STATE
     @filters  = []
     @on("subscribing"   , (e) => @state = SUBSCRIBING_STATE)
     @on("subscribe"     , (e) => @state = SUBSCRIBED_STATE)
     @on("unsubscribe"   , (e) => @unsubscribed())
     @on("unsubscribing" , (e) => @state = UNSUBSCRIBING_STATE)
-    @on("unauthorized"  , (e) => @state = UNAUTHORIZED_STATE)
+    @on("subscribe_denied"  , (e) => @state = UNAUTHORIZED_STATE)
     @ready = true
   
   debugging: () ->
@@ -482,7 +482,7 @@ class Client extends Dispatcher
         chan.trigger("unsubscribe", e.data)
         debugLog(this,"process; UNSUBSCRIBE_COMPLETE",chan.name)
       when SUBSCRIBE_DENIED
-        chan.trigger("unauthorized", e.data)
+        chan.trigger("subscribe_denied", e.data)
         debugLog(this,"process; SUBSCRIBE_DENIED",chan.name)
       
       when PUBLISH

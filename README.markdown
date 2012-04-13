@@ -81,7 +81,7 @@ Channels that do not exist will be created automatically by the Shove server.  B
 + publish_granted
 + subscribe
 + subscribing
-+ unauthorized
++ subscribe_denied
 + unsubscribe
 + unsubscribing
 
@@ -168,25 +168,25 @@ channel.filter(function(m){
 Or if not all messages need to be complex objects then perhaps multiple channels should be used.
 
 ```javascript
-simpleChan = $shove.channel("channel-a");
-complexChan = $shove.channel("channel-b");
+simpleChannel = $shove.channel("channel-a");
+complexChannel = $shove.channel("channel-b");
 
-simpleChan.on("message",function(message,from){
+simpleChannel.on("message",function(message,from){
   // handle incoming simple (string) messages
   console.log(typeof message);
 });
 
-complexChan.on("message",function(message,from){
+complexChannel.on("message",function(message,from){
   // handle incoming object messages
   console.log(typeof message);
 })
 
-simpleChan.publish("simple messages abound!");
+simpleChannel.publish("simple messages abound!");
 
-complexChan.filter(function(m){
+complexChannel.filter(function(m){
   return JSON.parse(m);
 });
-complexChan.publish(JSON.stringify({x:0,y:100,l:42}));
+complexChannel.publish(JSON.stringify({x:0,y:100,l:42}));
 ```
 
 If publishing messages is denied, the user can request authorization on any given channel.  The `channel-key` shall be provided by the client application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.

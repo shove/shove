@@ -211,9 +211,9 @@ runner.test "should remove bound event callbacks", () ->
       break
   runner.isTrue !callbackExists
 
-runner.test("should handle unauthorized event", () ->
+runner.test("should handle subscribe_denied event", () ->
   trig = false
-  shove.channel("c1").on("unauthorized", () ->
+  shove.channel("c1").on("subscribe_denied", () ->
     trig = true)
 
   backdoor.inject({
