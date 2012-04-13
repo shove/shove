@@ -16,7 +16,7 @@ Include the latest stable version of the shove javascript client.
 
 ## Connect to an App Network
 
-### Connect
+### <a name="shove_connect" />Connect
 
 Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
 
@@ -24,7 +24,7 @@ Connect the client to your app's network to enable the client to publish or rece
 $shove.connect('test-network');
 ```
 
-### Bind handlers to shove app networks
+### <a name="shove_events" />Bind handlers to shove app networks
 
 Allow your client-side app to respond to network connection events with the following types:
 
@@ -49,7 +49,7 @@ $shove.on('authorize', function() {
 });
 ```
 
-### Unbind handlers from shove app networks
+### <a name="shove_on_off" />Unbind handlers from shove app networks
 
 In the case of removing bound event handlers, the original function must be used for comparison.
 
@@ -62,7 +62,7 @@ $shove.on('connect',fn);
 $shove.off('connect',fn);
 ```
 
-### Subscribe to an App's Channel
+### <a name="channel_subscribe" />Subscribe to an App's Channel
 
 Channels that do not exist will be created automatically by the Shove server.  Bind handlers using the following event types:
 
@@ -88,7 +88,7 @@ channel.on('unauthorized',function(){
 });
 ```
 
-### Unsubscribe from Channels
+### <a name="channel_unsubscribe" />Unsubscribe from Channels
 
 A client will cease to receive messages from a channel when unsubscribed.
 
@@ -96,7 +96,7 @@ A client will cease to receive messages from a channel when unsubscribed.
 channel.unsubscribe();
 ```
 
-### Add filters to easily modify incoming messages
+### <a name="channel_filters" />Add filters to easily modify incoming messages
 
 Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
 
@@ -132,7 +132,7 @@ An array of bound filter functions can be obtained by omitting a function argume
 console.log(channel.filter().length + ' filters are currently in the message pipeline.');
 ```
 
-### Self Authorize
+### <a name="shove_authorize" />Self Authorize
 
 In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
 
@@ -141,7 +141,7 @@ $shove.app_key = 'test-network-app-key';
 $shove.authorize();
 ```
 
-#### Publish Messages
+#### <a name="channel_publish" />Publish Messages
 
 If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages can be simple strings or numbers or even complex objects and arrays.
 
@@ -149,7 +149,7 @@ If publishing is allowed on all channels by default, or if the client applicatio
 channel.publish('message here');
 ```
 
-If publishing messages is denied, the user can request authorization on any given channel.  The `'channel-key'` shall be provided by the client application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
+If publishing messages is denied, the user can request authorization on any given channel.  The `channel-key` shall be provided by the client application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
 
 ```javascript
 channel.authorize('channel-key');
