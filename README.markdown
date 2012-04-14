@@ -189,7 +189,7 @@ complexChannel.filter(function(m){
 complexChannel.publish(JSON.stringify({x:0,y:100,l:42}));
 ```
 
-If publishing messages is denied, the user can request authorization on any given channel.  The `channel-key` shall be provided by the client application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
+If publishing messages is denied, the user can request authorization on any given channel.  The `'channel-key'` shall be provided by the application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
 
 ```javascript
 channel.authorize('channel-key');
