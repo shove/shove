@@ -14,9 +14,9 @@ Include the latest stable version of the shove javascript client.
 <script type="text/javascript" src="http://cdn.shove.io/shove.min.js"></script>
 ```
 
-## Connect to an App Network
+## <a name="shove_networks" ></a>Networks
 
-### <a name="shove_connect" />Connect
+### <a name="shove_connect" ></a>Connect
 
 Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
 
@@ -24,7 +24,7 @@ Connect the client to your app's network to enable the client to publish or rece
 $shove.connect('test-network');
 ```
 
-### <a name="shove_events" />Bind handlers to shove app networks
+### <a name="shove_events" ></a>Bind handlers to shove app networks
 
 Allow your client-side app to respond to network connection events with the following types:
 
@@ -49,7 +49,7 @@ $shove.on('authorize', function() {
 });
 ```
 
-### <a name="shove_on_off" />Unbind handlers from shove app networks
+### <a name="shove_on_off" ></a>Unbind handlers from shove app networks
 
 In the case of removing bound event handlers, the original function must be used for comparison.
 
@@ -62,7 +62,7 @@ $shove.on('connect',fn);
 $shove.off('connect',fn);
 ```
 
-### <a name="shove_authorize" />Self Authorize
+### <a name="shove_authorize" ></a>Self Authorize
 
 In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
 
@@ -71,8 +71,8 @@ $shove.app_key = 'test-network-app-key';
 $shove.authorize();
 ```
 
-## <a name="channels" />Channels
-### <a name="channel_subscribe" />Subscribe
+## <a name="channels" ></a>Channels
+### <a name="channel_subscribe" ></a>Subscribe
 
 Channels that do not exist will be created automatically by the Shove server.  Bind handlers using the following event types:
 
@@ -98,7 +98,7 @@ channel.on('unauthorized',function(){
 });
 ```
 
-### <a name="channel_unsubscribe" />Unsubscribe from Channels
+### <a name="channel_unsubscribe" ></a>Unsubscribe from Channels
 
 A client will cease to receive messages from a channel when unsubscribed.
 
@@ -106,7 +106,7 @@ A client will cease to receive messages from a channel when unsubscribed.
 channel.unsubscribe();
 ```
 
-### <a name="channel_filters" />Add filters to easily modify incoming messages
+### <a name="channel_filters" ></a>Add filters to easily modify incoming messages
 
 Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
 
@@ -142,7 +142,7 @@ An array of bound filter functions can be obtained by omitting a function argume
 console.log(channel.filter().length + ' filters are currently in the message pipeline.');
 ```
 
-### <a name="channel_publish" />Publish Messages
+### <a name="channel_publish" ></a>Publish Messages
 
 If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages should be simple strings, if a message needs to be more complex use `JSON.stringify()` and `JSON.parse()` to encode and decode objects.
 
