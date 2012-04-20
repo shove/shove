@@ -4,7 +4,7 @@ This is the javascript client library for shove.io, the SaaS for web push.  Host
 since the javascript is modified with cluster information on request.  You can, however, look here if you are curious.
 
 For a full overview of the client and instructions on how to use it,
-please check out the [shove.io javascript documentation](http://shove.io/documentation/javascript_api)
+please check out the [shove.io javascript documentation](http://shove.io/documentation/javascript)
 
 ## Include the Shove Library
 
@@ -26,7 +26,7 @@ $shove.connect('test-network');
 
 ### <a name="shove_events" ></a>Bind handlers to shove app networks
 
-Allow your client-side app to respond to network connection events with the following types:
+Allow your client-side app to respond to network events with the following types:
 
 + authorize
 + authorize_denied
