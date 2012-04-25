@@ -3,9 +3,6 @@
 This is the javascript client library for shove.io, the SaaS for web push.  Hosting your own version of the script is not supported
 since the javascript is modified with cluster information on request.  You can, however, look here if you are curious.
 
-For a full overview of the client and instructions on how to use it,
-please check out the [shove.io javascript documentation](http://shove.io/documentation/javascript)
-
 ## Include the Shove Library
 
 Include the latest stable version of the shove javascript client.
@@ -21,7 +18,7 @@ Include the latest stable version of the shove javascript client.
 Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
 
 ```javascript
-$shove.connect('test-network');
+$shove.connect('app_id');
 ```
 
 ### <a name="shove_events" ></a>Bind handlers to shove app networks
@@ -44,7 +41,12 @@ $shove.on('connect', function() {
 });
 
 $shove.on('authorize', function() {
-  console.log('shove network authorized, feel free to publish to all channels');
+  console.log('shove network authorized, feel free to publish to all channels.');
+  return;
+});
+
+$shove.on('authorize_denied', function() {
+  console.log('shove network authorization has been denied.');
   return;
 });
 ```
@@ -67,7 +69,7 @@ $shove.off('connect',fn);
 In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
 
 ```javascript
-$shove.app_key = 'test-network-app-key';
+$shove.app_key = 'app_key';
 $shove.authorize();
 ```
 
@@ -86,17 +88,18 @@ Channels that do not exist will be created automatically by the Shove server.  B
 + unsubscribing
 
 ```javascript
-channel = $shove.channel('test-channel');
-channel.subscribe();
+var channel = $shove.channel('channel_name');
 channel.on('subscribe', function() {
   console.log('you are subscribed to this channel!');
   return;
 });
 channel.on('unauthorized',function(){
-  console.log('channel subscribed failed, not authorized!');
+  console.log('channel subscribe failed, not authorized!');
   return;
 });
 ```
+
+As soon as you bind a handler to the channel you will start to receive messages.
 
 ### <a name="channel_unsubscribe" ></a>Unsubscribe from Channels
 
@@ -189,10 +192,10 @@ complexChannel.filter(function(m){
 complexChannel.publish(JSON.stringify({x:0,y:100,l:42}));
 ```
 
-If publishing messages is denied, the user can request authorization on any given channel.  The `'channel-key'` shall be provided by the application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
+If publishing or subscribing on a channel is denied, the user can request authorization on that particular channel.  The `'channel_key'` shall be provided by the application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
 
 ```javascript
-channel.authorize('channel-key');
+channel.authorize('channel_key');
 channel.on('publish_granted',function(){
   console.log('publishing on channel:' + channel.name + ' has been granted');
   // start sending messages or process a queue of messages
