@@ -4,7 +4,7 @@ The official javascript client library for shove.io.
 
 ## Include the Shove Library
 
-Include the latest stable version of the shove javascript client.
+Include the latest version of the shove javascript client.
 
 ```html
 <script type="text/javascript" src="http://cdn.shove.io/shove.min.js"></script>
@@ -14,7 +14,7 @@ Include the latest stable version of the shove javascript client.
 
 ### <a name="shove_connect" ></a>Connect
 
-Connect the client to your app's network to enable the client to publish or receive messages from the app and perhaps other clients.
+Connect the client to your app's network to enable the client to publish or receive messages from the app and other clients.
 
 ```javascript
 $shove.connect('app_id');
@@ -60,19 +60,27 @@ $shove.on('connect', fn);
 $shove.off('connect', fn);
 ```
 
-### <a name="shove_authorize" ></a>Authentication/Authorization
+### <a name="shove_authorize" ></a>Authentication
 
-If your client needs publish/subscribe access on all channels, you can authorize the client using
-your app_key, provided by shove.
+It's possible to run your shove app in public mode, allowing all clients to publish and subscribe
+to any channel created.  This is great for getting up and running quickly, but it's dangerous. To 
+alleviate security concerns, apps and channels have keys which allow publishing and subscrbing.
+
+If your client needs publish/subscribe access on all channels, you can authenticate the client using
+your app_key, provided by shove.  This is only recommended if the client is a trusted client.
 
 ```javascript
 $shove.authenticate('app_key');
 ```
 
-Or, authenticate with a single channel on the app, using a channel_key.
+Use a channel key to authenticate with a single channel. The channel key is generated using
+your app key (hash of a hash).  To see how to generate them: See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
 
 ```javascript
 $shove.channel('channel').authenticate('channel_key');
+
+// alternative method
+$shove.channel('channel', 'channel_key');
 ```
 
 ## <a name="channels" ></a>Channels
@@ -172,8 +180,8 @@ channel.filter(function(m) {
 Or if not all messages need to be complex objects then perhaps multiple channels should be used.
 
 ```javascript
-simpleChannel = $shove.channel("channel-a");
-complexChannel = $shove.channel("channel-b");
+var simpleChannel = $shove.channel("channel-a");
+var complexChannel = $shove.channel("channel-b");
 
 simpleChannel.on("message", function(message, from) { 
   // handle incoming simple (string) messages
@@ -190,15 +198,6 @@ simpleChannel.publish("simple messages abound!");
 complexChannel.filter(function(m) {
   return JSON.parse(m);
 });
+
 complexChannel.publish(JSON.stringify({x:0,y:100,l:42}));
-```
-
-If publishing or subscribing on a channel is denied, the user can request authorization on that particular channel.  The `'channel_key'` shall be provided by the application.  See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
-
-```javascript
-channel.authorize('channel_key');
-channel.on('publish_granted', function() {
-  console.log('publishing on channel:' + channel.name + ' has been granted');
-  // start sending messages or process a queue of messages
-});
 ```

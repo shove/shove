@@ -5,6 +5,9 @@ if(typeof exports != "undefined" && exports != null)
 else
   root = window
 
+
+root.WEB_SOCKET_SWF_LOCATION ?= "http://cdn.shove.io/WebSocketMainInsecure.swf"
+
 # Opcodes
 ERROR = 0x00
 CONNECT = 0x01
@@ -351,6 +354,7 @@ class Transport extends Dispatcher
     if WebSocket == undefined
       @trigger("failure")
       @state = FAILURE_STATE
+      return
 
     # do a host lookup
     if @hosts.length == 0
@@ -392,7 +396,7 @@ class Transport extends Dispatcher
 
 class Client extends Dispatcher
 
-  Version: "1.0.3"
+  Version: "1.0.4"
 
   constructor: () ->
     super [

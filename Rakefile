@@ -72,17 +72,34 @@ end
 
 task :default => :spec
 
-task :compile do
+task :build do
+  system "coffee --bare --compile shove.coffee"
+  combine = "(function(root) {"
+  [
+    "lib/json2.js",
+    "lib/swfobject.js",
+    "lib/web_socket.js",
+    "shove.js"
+  ].each do |f|
+    combine << File.open(f).read
+    combine << "\n\n"
+  end
+  combine << "})(window);"
+
+  File.open("specs/integration/public/shove.js", "w") do |f|
+    f << combine
+  end
 end
 
 task :spec do
   system "coffee specs/shove_specs.coffee"
 end
 
-task :spec_browser do
-  system "coffee -b -c -o ./specs/browser/ ./shove.coffee"
-  system "coffee -b -c -o ./specs/browser/ ./specs/runner.coffee"
-  system "coffee -b -c -o ./specs/browser/ ./specs/shove_specs.coffee"
+task :integration_test => :build do
+  system "coffee -b -c -o ./specs/integration/public/ ./specs/runner.coffee"
+  system "coffee -b -c -o ./specs/integration/public/ ./specs/shove_specs.coffee"
+
+  system "cd specs/integration && rackup"
 end
 
 desc "Watch files and run the spec, coffee --watch on many + run"
@@ -179,29 +196,20 @@ task :publish => [:minify] do
 
   Log.info "Deploying to #{BUCKET}..."
   
-  files = [
-      {
-        :local => "#{OUT_DIR}/shove.dev.js",
-        :remote => "shove.js",
-        :headers => {"Content-Type" => "text/javascript"}
-      },
-      {
-        :local => "#{OUT_DIR}/shove.min.js",
-        :remote => "shove.min.js",
-        :headers => {"Content-Type" => "text/javascript"}
-      }
-      # ,
-      # {
-      #   :local => "#{OUT_DIR}/shove.min.js.gz",
-      #   :remote => "shove.min.js.gz",
-      #   :headers => {"Content-Type" => "application/x-gzip"}
-      # }
-    ]
+  files = [{
+    :local => "#{OUT_DIR}/shove.dev.js",
+    :remote => "shove.js",
+    :headers => { :content_type => "text/javascript" }
+  },{
+    :local => "#{OUT_DIR}/shove.min.js",
+    :remote => "shove.min.js",
+    :headers => { :content_type => "text/javascript" }
+  }]
   
   files.each do |f|
     content = File.open(f[:local]).read
     
-    publish(f[:remote],content,f[:headers])
+    publish(f[:remote], content, f[:headers])
     publish("#{VERSION}/#{f[:remote]}",content,f[:headers])
   end
 
@@ -216,13 +224,13 @@ task :publish_swf do
 
   Log.info "Deploying flash fallback"
 
-  content = File.open(File.dirname(__FILE__) + "/lib/proxy.swf").read
+  content = File.open(File.dirname(__FILE__) + "/lib/WebSocketMainInsecure.swf").read
 
-  publish("proxy.swf", content, {
-    "Content-Type" => "application/x-shockwave-flash"
+  publish("WebSocketMainInsecure.swf", content, {
+    :content_type => "application/x-shockwave-flash"
   })
 
-  invalidate(["/proxy.swf"])
+  invalidate(["/WebSocketMainInsecure.swf"])
 
 end
 

@@ -1,0 +1,30 @@
+!!!
+
+%head
+  %title Shove Integration Test
+
+%body
+  .header
+    %h3 Tests
+
+  .content
+    .container
+      #log
+
+  :javascript
+    function log(message) {
+      $("#log").append($("<div></div>").html(message));
+    }
+
+    WEB_SOCKET_FORCE_FLASH = true
+    WEB_SOCKET_LOGGER = {
+      log: function(msg) {
+        log("ws.swf: " + msg);
+      },
+      error: function(msg) {
+        log("ws.swf error: " + msg);
+      }
+    };
+  %script(type="text/javascript" src="/jquery.js")
+  %script(type="text/javascript" src="http://cdn.shove.io/shove.min.js")
+  %script(type="text/javascript" src="/tests.js")
