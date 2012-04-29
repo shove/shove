@@ -78,17 +78,14 @@ runner = new tRunner.TestRunner(true)
 
 runner.describe("Shove")
 
-runner.test("should have a version", () ->
-  runner.exists(shove.Version))
+runner.test "should have a version", () ->
+  runner.exists shove.Version
 
-runner.test("Should enable debugging",() ->
-  shove.enableDebugging()
-  runner.isTrue(shove.debugging()))
+runner.test "Should enable debugging",() ->
+  runner.isTrue shove.debug(true)
 
-runner.test("should disable debugging",() ->
-  shove.disableDebugging()
-  runner.isTrue(!shove.debugging())
-  )
+runner.test "should disable debugging",() ->
+  runner.isTrue !shove.debug(false)
 
 runner.test "should fail in attempt to bind to unknown events",() ->
   fn = () ->
@@ -153,8 +150,8 @@ runner.test("should have an id", () ->
   runner.areEqual(shove.id,"idx"))
 
 runner.test("should attempt to authorize", () ->
-  shove.authorize("key")
-  runner.areEqual(shove.appKey,"key")
+  shove.authenticate("key")
+  runner.areEqual(shove.key, "key")
   msg = backdoor.pop()
   runner.areEqual(msg.opcode,AUTHORIZE)
   runner.areEqual(msg.data,"key"))
@@ -312,7 +309,7 @@ runner.test("should handle publish_denied event", () ->
   
   )
 
-runner.test("should handle publish_granted event", () ->
+runner.test "should handle publish_granted event", () ->
   cn = "c1"
   cKey = "c1-key"
   
@@ -322,7 +319,7 @@ runner.test("should handle publish_granted event", () ->
   c.on("publish_granted",(m_) ->
     pubGranted = true)
   
-  c.authorize(cKey)
+  c.authenticate(cKey)
   
   backdoor.inject({
     opcode: AUTHORIZE_GRANTED,
@@ -330,9 +327,8 @@ runner.test("should handle publish_granted event", () ->
   })
   
   runner.isTrue(pubGranted)
-  )
 
-runner.test("should receive published message",() ->
+runner.test "should receive published message",() ->
   cn = "c1"
   c = shove.channel(cn)
   tm = "test message, should be received"
@@ -351,18 +347,18 @@ runner.test("should receive published message",() ->
   })
   
   runner.areEqual(filter(tm),m)
-  )
 
-runner.test("should start unsubscribing", () ->
+
+runner.test "should start unsubscribing", () ->
   trig = false
   shove.channel("c1").on("unsubscribing", () ->
     trig = true)
   shove.channel("c1").unsubscribe()
   runner.areEqual(shove.channel("c1").state,UNSUBSCRIBING_STATE)
   runner.isTrue(trig)
-  )
 
-runner.test("should unsubscribe", () ->
+
+runner.test "should unsubscribe", () ->
   trig = false
   shove.channel("c1").on("unsubscribe", () ->
     trig = true)
@@ -372,6 +368,6 @@ runner.test("should unsubscribe", () ->
   })
   runner.areEqual(shove.channel("c1").state,UNSUBSCRIBED_STATE)
   runner.isTrue(trig)
-  )
+
 
 runner.report()

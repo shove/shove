@@ -72,6 +72,9 @@ end
 
 task :default => :spec
 
+task :compile do
+end
+
 task :spec do
   system "coffee specs/shove_specs.coffee"
 end

@@ -47,8 +47,8 @@ debugging = false
 shoveLog = (args...) ->
   console.log.apply(console,[this.constructor.name,"|"].concat(args))
 
-debugLog = (context,args...) ->
-  if context.debugging()
+debugLog = (context, args...) ->
+  if debugging
     shoveLog.apply(context,args)
 
 # 
@@ -57,7 +57,7 @@ debugLog = (context,args...) ->
 # contains methods for use in binding, unbinding and 
 # triggering events
 class Dispatcher
-  constructor: (allowedEvents) ->
+  constructor: (@allowedEvents) ->
     @events = {}
     for e in allowedEvents
       @events[e] = []
@@ -66,16 +66,16 @@ class Dispatcher
   # will give an error and will not bind if event name is not allowed
   # e: event name
   # cb: callback function
-  on: (e,cb) ->
+  on: (e, cb) ->
     unless @events.hasOwnProperty(e)
-      console.error("Invalid event binding.  '#{e}' not found in '#{Object.keys(@events).join(', ')}'")
+      console.error("Invalid event binding.  '#{e}' not found in '#{@allowedEvents.join(', ')}'")
       return false
     else
       if typeof cb == 'function'
         unless @events[e].length > 0
           @events[e] = []
         @events[e].push(cb)
-        debugLog(this,"on; bind event:",e,@events[e])
+        debugLog(this, "on; bind event:", e, @events[e])
       else
         return @events[e]
     this
@@ -83,7 +83,7 @@ class Dispatcher
   # Unbind events
   # e: event name
   # cb: original callback function
-  off: (e,cb) ->
+  off: (e, cb) ->
     if @events.hasOwnProperty(e)
       for cbi in [(@events[e].length-1)..0]
         if @events[e][cbi] == cb
@@ -93,7 +93,7 @@ class Dispatcher
   # Trigger events
   # e: event name
   # args...: arguments to be passed to callback functions
-  trigger: (e,args...) ->
+  trigger: (e, args...) ->
     if @events.hasOwnProperty(e)
       for cb in @events[e]
         cb.apply(root,args)
@@ -114,18 +114,27 @@ UNAUTHORIZED_STATE = 0x5
 class Channel extends Dispatcher
 
   constructor: (@name, @transport) ->
-    super ["message","subscribing","subscribe","unsubscribing","unsubscribe","subscribe_denied","publish_granted","publish_denied"]
-    @state    = UNSUBSCRIBED_STATE
-    @filters  = []
-    @on("subscribing"   , (e) => @state = SUBSCRIBING_STATE)
-    @on("subscribe"     , (e) => @state = SUBSCRIBED_STATE)
-    @on("unsubscribe"   , (e) => @unsubscribed())
-    @on("unsubscribing" , (e) => @state = UNSUBSCRIBING_STATE)
-    @on("subscribe_denied"  , (e) => @state = UNAUTHORIZED_STATE)
+    super [
+      "message"
+      "subscribing"
+      "subscribe"
+      "unsubscribing"
+      "unsubscribe"
+      "subscribe_denied"
+      "publish_granted"
+      "publish_denied"
+    ]
+
+    @state = UNSUBSCRIBED_STATE
+    @filters = []
+
+    @on("subscribing", (e) => @state = SUBSCRIBING_STATE)
+    @on("subscribe", (e) => @state = SUBSCRIBED_STATE)
+    @on("unsubscribe", (e) => @unsubscribed())
+    @on("unsubscribing", (e) => @state = UNSUBSCRIBING_STATE)
+    @on("subscribe_denied", (e) => @state = UNAUTHORIZED_STATE)
+
     @ready = true
-  
-  debugging: () ->
-    debugging
 
   # Bind a function to an event
   # The function will be called when
@@ -133,8 +142,8 @@ class Channel extends Dispatcher
   # is received
   # `event` the event to trigger on
   # `cb` the callback to execute on trigger
-  on: (e,cb) ->
-    r = super(e,cb)
+  on: (e, cb) ->
+    r = super(e, cb)
     if @events.hasOwnProperty(e) && @state == UNSUBSCRIBED_STATE && @ready
       @subscribe()
     r
@@ -150,15 +159,19 @@ class Channel extends Dispatcher
     
     @trigger("message", data, from)
     this
-  
-  # Authorize user to publish to channel
-  # key: unique key required to authorize
-  authorize: (@key) ->
-    @transport.send({
-      opcode: AUTHORIZE,
-      channel: @name,
+
+  # authenticate with the channel to allow
+  # subscription and publishing.
+  # key: unique key required to authenticate
+  authenticate: (@key) ->
+    @transport.send
+      opcode: AUTHORIZE
+      channel: @name
       data: @key
-    })
+
+
+  # Deprecated: alias for authenticate
+  authorize: (@key) -> @authenticate(@key)
   
     
   # Publish an event and message on this
@@ -166,43 +179,40 @@ class Channel extends Dispatcher
   # `event` the event to broadcast
   # `message` the message to broadcast
   publish: (message) ->
-    @transport.send({
-      opcode: PUBLISH,
-      channel: @name,
+    @transport.send
+      opcode: PUBLISH
+      channel: @name
       data: message
-    })
-    debugLog(this,"publish",message)
+    debugLog(this, "publish", message)
     this
 
   # Unsubscribe from this channel
   unsubscribe: ->
-    @trigger("unsubscribing")
-    @transport.send({
-      opcode: UNSUBSCRIBE,
+    @trigger "unsubscribing"
+    @transport.send
+      opcode: UNSUBSCRIBE
       channel: @name
-    })
     this
 
   # Register this channel with shove
   subscribe: ->
-    @trigger("subscribing")
-    @transport.send({
-      opcode: SUBSCRIBE,
+    @trigger "subscribing"
+    @transport.send
+      opcode: SUBSCRIBE
       channel: @name
-    })
     this
 
   unsubscribed: ->
-    @state  = UNSUBSCRIBED_STATE
+    @state = UNSUBSCRIBED_STATE
     @events = null
-    @ready  = false
+    @ready = false
 
   # Add a message filter.  Message filters are called
   # before any events propogate, so that you can apply
   # logic to every message on every channel.
   #
   # Example:
-  # Shove.filter(function(e) {
+  # $shove.filter(function(e) {
   #   e.timestamp = new Date();
   #   if(e.timestamp > END_OF_THE_WORLD) {
   #     return false;
@@ -250,16 +260,23 @@ removeScript = (id) ->
 class Transport extends Dispatcher
 
   constructor: (@app, @secure, @hosts=[]) ->
-    super ["connect","connecting","disconnect","message","reconnect","error","statechange","failure","handshaking"]
+    super [
+      "connect"
+      "connecting"
+      "disconnect"
+      "message"
+      "reconnect"
+      "error"
+      "statechange"
+      "failure"
+      "handshaking"
+    ]
     @errors = []
     @queue = []
     @state = DISCONNECTED_STATE
     @callbacks = {}
     @connections = 0
     @forcedc = false
-
-  debugging: () ->
-    debugging
 
   # Get the URL of the transport
   url: () ->
@@ -378,7 +395,16 @@ class Client extends Dispatcher
   Version: "1.0.3"
 
   constructor: () ->
-    super ["failure","connecting","handshaking","disconnect","connect","authorize","authorize_denied","reconnect"]
+    super [
+      "failure"
+      "connecting"
+      "handshaking"
+      "disconnect"
+      "connect"
+      "authorize"
+      "authorize_denied"
+      "reconnect"
+    ]
     @id = null
     @app = null
     @secure = false
@@ -387,17 +413,9 @@ class Client extends Dispatcher
     @authorized = false
     @hosts = []
   
-  debugging: () ->
-    debugging
+  debug: (choice) ->
+    debugging = choice
 
-  enableDebugging: () ->
-    debugging = true
-    this
-  
-  disableDebugging: () ->
-    debugging = false
-    this
-    
   # Connect to an app
   # `app` The name of the app
   # `opts` The opts
@@ -416,7 +434,7 @@ class Client extends Dispatcher
       @transport.on("reconnect", () => @onReconnect())
       @transport.connect(@id)
 
-    debugLog(this,"connect",arguments)
+    debugLog(this, "connect", arguments)
     
     this
        
@@ -430,9 +448,11 @@ class Client extends Dispatcher
   # and subscribe to it on the remote host if not
   # currently subscribed
   # `name` The name of the channel
-  channel: (name) ->
+  channel: (name, key=false) ->
     unless channel = @channels[name]
-      channel = new Channel(name,@transport)
+      channel = new Channel(name, @transport)
+      if key
+        channel.authenticate key
       @channels[name] = channel
     channel
 
@@ -440,27 +460,19 @@ class Client extends Dispatcher
   identity: () ->
     @id
 
-  # Send a message directly to another on the app
-  # `message` the event data
-  # publish: (channel, message) ->
-  #   @transport.send({
-  #     opcode: PUBLISH,
-  #     channel: channel,
-  #     data: message
-  #   })
-  #   this
-
-  # Self authorize to permit all
-  # actions on the connection
-  authorize: (appKey) ->
-    @appKey = appKey
-    @transport.send({
-      opcode: AUTHORIZE,
-      channel: "*",
-      data: @appKey
-    })
+  # Authenticate with the app to grant
+  # client pub/sub rights on all channels
+  authenticate: (@key) ->
+    @transport.send
+      opcode: AUTHORIZE
+      channel: "*"
+      data: @key
     this
 
+  # Deprecated: alias for authenticate
+  authorize: (key) -> @authenticate(key)
+
+  # Set the available hosts
   setHosts: (hosts) ->
     @transport.updateHosts(hosts)
 
