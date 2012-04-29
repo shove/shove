@@ -1,7 +1,6 @@
-# Shove.io Javascript Client
+# shove.io javascript client
 
-This is the javascript client library for shove.io, the SaaS for web push.  Hosting your own version of the script is not supported
-since the javascript is modified with cluster information on request.  You can, however, look here if you are curious.
+The official javascript client library for shove.io.
 
 ## Include the Shove Library
 
@@ -37,17 +36,14 @@ Allow your client-side app to respond to network events with the following types
 ```javascript
 $shove.on('connect', function() {
   console.log('shove network connected');
-  return;
 });
 
 $shove.on('authorize', function() {
   console.log('shove network authorized, feel free to publish to all channels.');
-  return;
 });
 
 $shove.on('authorize_denied', function() {
   console.log('shove network authorization has been denied.');
-  return;
 });
 ```
 
@@ -60,17 +56,23 @@ var fn = function(){
   console.log('Shove Connected!');
   return true;
 };
-$shove.on('connect',fn);
-$shove.off('connect',fn);
+$shove.on('connect', fn);
+$shove.off('connect', fn);
 ```
 
-### <a name="shove_authorize" ></a>Self Authorize
+### <a name="shove_authorize" ></a>Authentication/Authorization
 
-In some cases it may be beneficial to have a client authorized to publish on all channels, perhaps a private version of the client not open to the public.  Supplying an `app_key` and using the `authorize` method will grant full publishing permissions on all channels for the client.  Channels will still have to be subscribed to individually.
+If your client needs publish/subscribe access on all channels, you can authorize the client using
+your app_key, provided by shove.
 
 ```javascript
-$shove.app_key = 'app_key';
-$shove.authorize();
+$shove.authenticate('app_key');
+```
+
+Or, authenticate with a single channel on the app, using a channel_key.
+
+```javascript
+$shove.channel('channel').authenticate('channel_key');
 ```
 
 ## <a name="channels" ></a>Channels
@@ -89,13 +91,13 @@ Channels that do not exist will be created automatically by the Shove server.  B
 
 ```javascript
 var channel = $shove.channel('channel_name');
+
 channel.on('subscribe', function() {
   console.log('you are subscribed to this channel!');
-  return;
 });
-channel.on('unauthorized',function(){
+
+channel.on('unauthorized', function() {
   console.log('channel subscribe failed, not authorized!');
-  return;
 });
 ```
 
@@ -114,16 +116,16 @@ channel.unsubscribe();
 Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
 
 ```javascript
-/* Filter replaces occurrences of 'hello' with 'HULLO' within message data strings */
-channel.filter(function(msg){
+// replaces occurrences of 'hello' with 'HULLO' for all messages received
+channel.filter(function(msg) {
   if(msg.hasOwnProperty('data') && typeof msg.data == 'string') {
     msg.data = msg.data.replace('hello','HULLO');
   }
   return msg;
 });
 
-/* Halt messages that contain profanity */
-channel.filter(function(msg){
+// Halt messages that contain profanity
+channel.filter(function(msg) {
   if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
     if(msg.data.search(/(poop|fanny)/gi) >= 0)
       return false;
@@ -131,9 +133,8 @@ channel.filter(function(msg){
   return msg;
 });
 
-channel.on('message',function(msg){
-  /* present message to user or hand off to client application */
-  return;
+channel.on('message', function(msg) {
+  // handle message as you see fit
 });
 ```
 
@@ -153,9 +154,9 @@ If publishing is allowed on all channels by default, or if the client applicatio
 channel.publish('message here');
 
 var complexMessage = {
-  x:0,
-  y:100,
-  l:42
+  x: 0,
+  y: 100,
+  l: 42
 };
 channel.publish(JSON.stringify(complexMessage));
 ```
@@ -163,7 +164,7 @@ channel.publish(JSON.stringify(complexMessage));
 A filter can be applied to all incoming messages to handle the decoding of data.
 
 ```javascript
-channel.filter(function(m){
+channel.filter(function(m) {
   return JSON.parse(m);
 });
 ```
@@ -174,19 +175,19 @@ Or if not all messages need to be complex objects then perhaps multiple channels
 simpleChannel = $shove.channel("channel-a");
 complexChannel = $shove.channel("channel-b");
 
-simpleChannel.on("message",function(message,from){
+simpleChannel.on("message", function(message, from) { 
   // handle incoming simple (string) messages
   console.log(typeof message);
 });
 
-complexChannel.on("message",function(message,from){
+complexChannel.on("message", function(message, from) {
   // handle incoming object messages
   console.log(typeof message);
 })
 
 simpleChannel.publish("simple messages abound!");
 
-complexChannel.filter(function(m){
+complexChannel.filter(function(m) {
   return JSON.parse(m);
 });
 complexChannel.publish(JSON.stringify({x:0,y:100,l:42}));
@@ -196,7 +197,7 @@ If publishing or subscribing on a channel is denied, the user can request author
 
 ```javascript
 channel.authorize('channel_key');
-channel.on('publish_granted',function(){
+channel.on('publish_granted', function() {
   console.log('publishing on channel:' + channel.name + ' has been granted');
   // start sending messages or process a queue of messages
 });
