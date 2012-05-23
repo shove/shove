@@ -7,14 +7,17 @@
   .header
     %h3 Tests
 
+  .thing#clicky Mo
+
   .content
     .container
       #log
 
+  %script(type="text/javascript" src="/jquery.js")
+  %script(type="text/javascript" src="/shove.js")
+  %script(type="text/javascript" src="/tests.js")
+
   :javascript
-    function log(message) {
-      $("#log").append($("<div></div>").html(message));
-    }
 
     WEB_SOCKET_FORCE_FLASH = true
     WEB_SOCKET_LOGGER = {
@@ -25,6 +28,4 @@
         log("ws.swf error: " + msg);
       }
     };
-  %script(type="text/javascript" src="/jquery.js")
-  %script(type="text/javascript" src="http://cdn.shove.io/shove.min.js")
-  %script(type="text/javascript" src="/tests.js")
+

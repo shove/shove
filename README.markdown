@@ -14,19 +14,18 @@ Include the latest version of the shove javascript client.
 
 ### <a name="shove_connect" ></a>Connect
 
-Connect the client to your app's network to enable the client to publish or receive messages from the app and other clients.
+Connect the client to your app"s network to enable the client to publish or receive messages from the app and other clients.
 
 ```javascript
-$shove.connect('app_id');
+$shove.connect("app_id", "connect_key");
 ```
 
 ### <a name="shove_events" ></a>Bind handlers to shove app networks
 
 Allow your client-side app to respond to network events with the following types:
 
-+ authorize
-+ authorize_denied
 + connect
++ connect_denied
 + connecting
 + disconnect
 + handshaking
@@ -34,16 +33,8 @@ Allow your client-side app to respond to network events with the following types
 + reconnect
 
 ```javascript
-$shove.on('connect', function() {
-  console.log('shove network connected');
-});
-
-$shove.on('authorize', function() {
-  console.log('shove network authorized, feel free to publish to all channels.');
-});
-
-$shove.on('authorize_denied', function() {
-  console.log('shove network authorization has been denied.');
+$shove.on("connect", function() {
+  console.log("shove network connected");
 });
 ```
 
@@ -53,34 +44,28 @@ In the case of removing bound event handlers, the original function must be used
 
 ```javascript
 var fn = function(){
-  console.log('Shove Connected!');
+  console.log("Shove Connected!");
   return true;
 };
-$shove.on('connect', fn);
-$shove.off('connect', fn);
+$shove.on("connect", fn);
+$shove.off("connect", fn);
 ```
 
 ### <a name="shove_authorize" ></a>Authentication
 
-It's possible to run your shove app in public mode, allowing all clients to publish and subscribe
-to any channel created.  This is great for getting up and running quickly, but it's dangerous. To 
-alleviate security concerns, apps and channels have keys which allow publishing and subscrbing.
+It"s possible to grant clients publish and subscribe rights on one or more channels.
 
 If your client needs publish/subscribe access on all channels, you can authenticate the client using
-your app_key, provided by shove.  This is only recommended if the client is a trusted client.
+the * channel.  This is only recommended if the client is a trusted client.
 
 ```javascript
-$shove.authenticate('app_key');
+$shove.channel("*").authenticate("sub or channel key");
 ```
 
-Use a channel key to authenticate with a single channel. The channel key is generated using
-your app key (hash of a hash).  To see how to generate them: See the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
+To generate keys see the [Channel Keys](https://github.com/shove/shove-ruby#channel_keys "Shove-Ruby:Channel Keys") section of the [shove-ruby](https://github.com/shove/shove-ruby "Shove-Ruby") implementation.
 
 ```javascript
-$shove.channel('channel').authenticate('channel_key');
-
-// alternative method
-$shove.channel('channel', 'channel_key');
+$shove.channel("channel").authenticate("channel_key");
 ```
 
 ## <a name="channels" ></a>Channels
@@ -98,14 +83,14 @@ Channels that do not exist will be created automatically by the Shove server.  B
 + unsubscribing
 
 ```javascript
-var channel = $shove.channel('channel_name');
+var channel = $shove.channel("channel_name");
 
-channel.on('subscribe', function() {
-  console.log('you are subscribed to this channel!');
+channel.on("subscribe", function() {
+  console.log("you are subscribed to this channel!");
 });
 
-channel.on('unauthorized', function() {
-  console.log('channel subscribe failed, not authorized!');
+channel.on("unauthorized", function() {
+  console.log("channel subscribe failed, not authorized!");
 });
 ```
 
@@ -121,27 +106,27 @@ channel.unsubscribe();
 
 ### <a name="channel_filters" ></a>Add filters to easily modify incoming messages
 
-Filters are applied to incoming messages before the 'message' event is fired.  Message processing can be halted if a filter returns `false`.
+Filters are applied to incoming messages before the "message" event is fired.  Message processing can be halted if a filter returns `false`.
 
 ```javascript
-// replaces occurrences of 'hello' with 'HULLO' for all messages received
+// replaces occurrences of "hello" with "HULLO" for all messages received
 channel.filter(function(msg) {
-  if(msg.hasOwnProperty('data') && typeof msg.data == 'string') {
-    msg.data = msg.data.replace('hello','HULLO');
+  if(msg.hasOwnProperty("data") && typeof msg.data == "string") {
+    msg.data = msg.data.replace("hello","HULLO");
   }
   return msg;
 });
 
 // Halt messages that contain profanity
 channel.filter(function(msg) {
-  if(msg.hasOwnProperty('data') && typeof msg.data == 'string'){
-    if(msg.data.search(/(poop|fanny)/gi) >= 0)
+  if(msg.hasOwnProperty("data") && typeof msg.data == "string"){
+    if(msg.data.search(/(bad|words)/gi) >= 0)
       return false;
   }
   return msg;
 });
 
-channel.on('message', function(msg) {
+channel.on("message", function(msg) {
   // handle message as you see fit
 });
 ```
@@ -151,7 +136,7 @@ channel.on('message', function(msg) {
 An array of bound filter functions can be obtained by omitting a function argument.
 
 ```javascript
-console.log(channel.filter().length + ' filters are currently in the message pipeline.');
+console.log(channel.filter().length + " filters are currently in the message pipeline.");
 ```
 
 ### <a name="channel_publish" ></a>Publish Messages
@@ -159,7 +144,7 @@ console.log(channel.filter().length + ' filters are currently in the message pip
 If publishing is allowed on all channels by default, or if the client application has already authorized itself then sending messages is simple.  Messages should be simple strings, if a message needs to be more complex use `JSON.stringify()` and `JSON.parse()` to encode and decode objects.
 
 ```javascript
-channel.publish('message here');
+channel.publish("message here");
 
 var complexMessage = {
   x: 0,
@@ -199,5 +184,9 @@ complexChannel.filter(function(m) {
   return JSON.parse(m);
 });
 
-complexChannel.publish(JSON.stringify({x:0,y:100,l:42}));
+complexChannel.publish(JSON.stringify({
+  x: 0,
+  y: 100,
+  l: 42
+}));
 ```

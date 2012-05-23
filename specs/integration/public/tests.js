@@ -1,14 +1,20 @@
+function log(message) {
+  $("#log").append($("<div></div>").html(message));
+}
+
 $(function() {
 
   log("starting shove integration test")
 
   log("trying to connect")
 
-  $shove.connect("test", {
-    hosts: ["shove.dev:9000"]
+  // $shove.debug(true);
+
+  $shove.connect("test", "dee1baefd3a449474cbc9817929ebc3019eaece5", {
+    hosts: ["thor.shove.io:9000"]
   });
 
-  $shove.authenticate("test");
+  $shove.channel("*").authenticate("06188df7659636e44c0f788fb21da049027fde88");
 
   $shove.on("connect", function() {
     log("connected");
@@ -72,6 +78,15 @@ $(function() {
     log("message: " + m);
   });
 
-  channel.publish("hello self!");
+  // channel.publish("hello self!");
+
+
+
+  $("#clicky").click(function() {
+    $("#log").empty();
+    for(var i = 0;i < 100;i++) {
+      channel.publish("test: " + i);
+    }
+  });
 
 });

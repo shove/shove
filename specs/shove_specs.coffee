@@ -106,20 +106,22 @@ runner.test "should remove bound event callbacks",() ->
       break
   runner.isTrue !callbackExists
 
-runner.test("should attempt to connect", () ->
-  shove.connect("app",{hosts:"app-aspen-1.shove.io"})
-  runner.areEqual(shove.app,"app")
-  runner.exists(shove.transport))
+runner.test "should attempt to connect", () ->
+  shove.connect "app", "key"
+    hosts: ["app-aspen-1.shove.io"]
 
-runner.test("should attempt to connect", () ->
+  runner.areEqual shove.app, "app"
+  runner.areEqual shove.connectKey, "key"
+  runner.exists shove.transport
+
+runner.test "should attempt to connect", () ->
   trig = false
-  shove.on("connecting", () ->
-    trig = true)
+  shove.on "connecting", () ->
+    trig = true
 
-  shove.connect("app")
-  runner.areEqual(shove.app,"app")
+  shove.connect "app", "key"
 
-  runner.isTrue(trig))
+  runner.isTrue trig
 
 runner.test("should trigger handshake event", () ->
   trig = false

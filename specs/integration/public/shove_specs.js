@@ -164,10 +164,11 @@ runner.test("should remove bound event callbacks", function() {
 });
 
 runner.test("should attempt to connect", function() {
-  shove.connect("app", {
-    hosts: "app-aspen-1.shove.io"
+  shove.connect("app", "key", {
+    hosts: ["app-aspen-1.shove.io"]
   });
   runner.areEqual(shove.app, "app");
+  runner.areEqual(shove.connectKey, "key");
   return runner.exists(shove.transport);
 });
 
@@ -177,8 +178,7 @@ runner.test("should attempt to connect", function() {
   shove.on("connecting", function() {
     return trig = true;
   });
-  shove.connect("app");
-  runner.areEqual(shove.app, "app");
+  shove.connect("app", "key");
   return runner.isTrue(trig);
 });
 

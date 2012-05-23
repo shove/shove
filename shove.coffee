@@ -15,6 +15,8 @@ CONNECT_GRANTED = 0x02
 CONNECT_DENIED = 0x03
 DISCONNECT = 0x04
 DISCONNECT_COMPLETE = 0x06
+REDIRECT = 0x07
+SET_IDENTITY = 0x08
 SUBSCRIBE = 0x10 
 SUBSCRIBE_GRANTED = 0x11
 SUBSCRIBE_DENIED = 0x12
@@ -309,14 +311,7 @@ class Transport extends Dispatcher
     this
               
   #### Private methods
-          
-  opened: () ->
-    @trigger("connecting")
-    connectMessage = 
-      opcode:CONNECT
-      data:@id
-    @transmit(@encode(connectMessage))
-  
+            
   # Connected handler
   connected: (e) ->
     @state = CONNECTED_STATE
@@ -346,7 +341,7 @@ class Transport extends Dispatcher
     JSON.stringify(msg)
     
   # Override
-  connect: (@id = null) ->
+  connect: (@connectKey) ->
     # skip if we are connected
     if @state != DISCONNECTED_STATE
       return
@@ -371,7 +366,7 @@ class Transport extends Dispatcher
       @trigger("handshaking")
       @transmit(@encode({
         opcode: CONNECT
-        data: @id
+        data: @connectKey
       }))
 
       
@@ -396,7 +391,7 @@ class Transport extends Dispatcher
 
 class Client extends Dispatcher
 
-  Version: "1.0.4"
+  Version: "1.0.5"
 
   constructor: () ->
     super [
@@ -423,7 +418,7 @@ class Client extends Dispatcher
   # Connect to an app
   # `app` The name of the app
   # `opts` The opts
-  connect: (@app, opts) ->
+  connect: (@app, @connectKey, opts) ->
     if opts?
       for own key, val of opts
         @[key] = val
@@ -436,7 +431,7 @@ class Client extends Dispatcher
       @transport.on("handshaking", () => @trigger("handshaking"))
       @transport.on("disconnect", () => @trigger("disconnect"))
       @transport.on("reconnect", () => @onReconnect())
-      @transport.connect(@id)
+      @transport.connect(@connectKey)
 
     debugLog(this, "connect", arguments)
     
@@ -452,11 +447,9 @@ class Client extends Dispatcher
   # and subscribe to it on the remote host if not
   # currently subscribed
   # `name` The name of the channel
-  channel: (name, key=false) ->
+  channel: (name) ->
     unless channel = @channels[name]
       channel = new Channel(name, @transport)
-      if key
-        channel.authenticate key
       @channels[name] = channel
     channel
 
