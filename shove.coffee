@@ -473,6 +473,9 @@ class Client extends Dispatcher
   setHosts: (hosts) ->
     @transport.updateHosts(hosts)
 
+  setAvailableHosts: (hosts) ->
+    @setHosts(hosts)
+
   # Process a shove message
   process: (e) ->
     chan = @channels[e.channel]

@@ -8,11 +8,13 @@ $(function() {
 
   log("trying to connect")
 
-  // $shove.debug(true);
+  $shove.debug(true);
 
   $shove.connect("test", "dee1baefd3a449474cbc9817929ebc3019eaece5", {
     hosts: ["thor.shove.io:9000"]
   });
+
+  // $shove.connect("test", "dee1baefd3a449474cbc9817929ebc3019eaece5");
 
   $shove.channel("*").authenticate("06188df7659636e44c0f788fb21da049027fde88");
 
