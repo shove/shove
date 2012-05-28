@@ -285,10 +285,10 @@ class Transport extends Dispatcher
 
   # Get the URL of the transport
   url: () ->
-    "#{if @secure then "wss" else "ws"}://#{@host()}/#{@app}"
+    "#{if @secure then "wss" else "ws"}://#{@host()}/v1/#{@app}"
 
   requestHosts: () ->
-    injectScript("hostlookup", "http://api.shove.io/apps/#{@app}/nodes") 
+    injectScript("hostlookup", "http://api.shove.io/v1/apps/#{@app}/nodes") 
   
   updateHosts: (hosts) ->
     removeScript("hostlookup")
@@ -391,7 +391,7 @@ class Transport extends Dispatcher
 
 class Client extends Dispatcher
 
-  Version: "1.0.5"
+  Version: "1.0.6"
 
   constructor: () ->
     super [

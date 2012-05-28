@@ -6,6 +6,8 @@ Bundler.require
 # S3 bucket
 BUCKET = "shove-cdn"
 
+COFFEE = "./node_modules/coffee-script/bin/coffee"
+
 # Config
 VERSION = File.open("./shove.coffee").read.match(/Version\s*:\s*['"]([.\d]+)['"]/)[1]
 
@@ -73,7 +75,7 @@ end
 task :default => :spec
 
 task :build do
-  system "coffee --bare --compile shove.coffee"
+  system "#{COFFEE} --bare --compile shove.coffee"
   combine = "(function(root) {"
   [
     "lib/json2.js",
@@ -92,12 +94,12 @@ task :build do
 end
 
 task :spec do
-  system "coffee specs/shove_specs.coffee"
+  system "#{COFFEE} specs/shove_specs.coffee"
 end
 
 task :integration_test => :build do
-  system "coffee -b -c -o ./specs/integration/public/ ./specs/runner.coffee"
-  system "coffee -b -c -o ./specs/integration/public/ ./specs/shove_specs.coffee"
+  system "#{COFFEE} -b -c -o ./specs/integration/public/ ./specs/runner.coffee"
+  system "#{COFFEE} -b -c -o ./specs/integration/public/ ./specs/shove_specs.coffee"
 
   system "cd specs/integration && rackup"
 end
@@ -113,7 +115,7 @@ task :autospec => [:spec] do
     def file_modified
       if Time.now - $last > 1
         $last = Time.now
-        system "coffee specs/shove_specs.coffee"
+        system "#{COFFEE} specs/shove_specs.coffee"
       end
     end
   end
@@ -139,7 +141,7 @@ task :combine do
     Dir.mkdir(OUT_DIR)
   end
   
-  system "coffee --bare --compile #{file_source}"
+  system "#{COFFEE} --bare --compile #{file_source}"
   
   combine = "(function(root) {"
   

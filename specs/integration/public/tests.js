@@ -10,9 +10,7 @@ $(function() {
 
   $shove.debug(true);
 
-  $shove.connect("test", "dee1baefd3a449474cbc9817929ebc3019eaece5", {
-    hosts: ["thor.shove.io:9000"]
-  });
+  $shove.connect("test", "dee1baefd3a449474cbc9817929ebc3019eaece5");
 
   // $shove.connect("test", "dee1baefd3a449474cbc9817929ebc3019eaece5");
 
