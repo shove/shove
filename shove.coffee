@@ -1,6 +1,6 @@
 # Shove Copyright 2012 Shove under the MIT License <http://www.opensource.org/licenses/mit-license.php>
 
-if(typeof exports != "undefined" && exports != null)
+if typeof exports != "undefined" && exports != null
   root = exports
 else
   root = window
@@ -49,12 +49,9 @@ PRESENCE_LIST = 0x72
 
 debugging = false
 
-shoveLog = (args...) ->
-  console.log.apply(console,[this.constructor.name,"|"].concat(args))
-
-debugLog = (context, args...) ->
+debug = (args...) ->
   if debugging
-    shoveLog.apply(context,args)
+    console.log.apply console, args
 
 # 
 # Dispatcher
@@ -80,7 +77,6 @@ class Dispatcher
         unless @events[e].length > 0
           @events[e] = []
         @events[e].push(cb)
-        debugLog(this, "on; bind event:", e, @events[e])
       else
         return @events[e]
     this
@@ -102,7 +98,6 @@ class Dispatcher
     if @events.hasOwnProperty(e)
       for cb in @events[e]
         cb.apply(root,args)
-      debugLog(this,"trigger; event:",e)
     this
 
 
@@ -128,6 +123,9 @@ class Channel extends Dispatcher
       "subscribe_denied"
       "publish_granted"
       "publish_denied"
+      "presence_added"
+      "presence_removed"
+      "presence_list"
     ]
 
     @state = UNSUBSCRIBED_STATE
@@ -158,27 +156,27 @@ class Channel extends Dispatcher
   process: (data, from) ->
     if @filters.length > 0
       for filter in @filters
-        data = filter(data)
+        data = filter(data, from)
         if data == false
           return this
-    
     @trigger("message", data, from)
     this
 
   # authenticate with the channel to allow
   # subscription and publishing.
   # key: unique key required to authenticate
-  authenticate: (@key) ->
+  auth: (@key) ->
     @transport.send
       opcode: AUTHORIZE
       channel: @name
       data: @key
 
+  # Alias for auth
+  authenticate: (key) -> @auth(key)
 
-  # Deprecated: alias for authenticate
-  authorize: (@key) -> @authenticate(@key)
+  # Deprecated: alias for auth
+  authorize: (key) -> @auth(key)
   
-    
   # Publish an event and message on this
   # channel
   # `event` the event to broadcast
@@ -188,7 +186,6 @@ class Channel extends Dispatcher
       opcode: PUBLISH
       channel: @name
       data: message
-    debugLog(this, "publish", message)
     this
 
   # Unsubscribe from this channel
@@ -288,12 +285,11 @@ class Transport extends Dispatcher
     "#{if @secure then "wss" else "ws"}://#{@host()}/v1/#{@app}"
 
   requestHosts: () ->
-    injectScript("hostlookup", "http://api.shove.io/v1/apps/#{@app}/nodes") 
+    injectScript("hostlookup", "http://api.shove.io/v1/apps/#{@app}/nodes")
   
-  updateHosts: (hosts) ->
+  updateHosts: (@hosts) ->
     removeScript("hostlookup")
-    if hosts
-      @hosts = hosts
+    if @hosts
       @connect()
     else
       @trigger("error", "No hosts found for app #{@app}")
@@ -304,10 +300,12 @@ class Transport extends Dispatcher
   # Send data on the transport
   # `data` - the data to send
   send: (data) ->
+    msg = @encode(data)
     unless @state == CONNECTED_STATE
+      debug "queuing #{msg}"
       @queue.push(data)
     else
-      @transmit(@encode(data))
+      @transmit(msg)
     this
               
   #### Private methods
@@ -332,6 +330,7 @@ class Transport extends Dispatcher
     @socket.close()
   
   transmit: (frame) ->
+    debug "sending #{frame}"
     @socket.send(frame)
   
   decode: (msg) ->
@@ -341,7 +340,11 @@ class Transport extends Dispatcher
     JSON.stringify(msg)
     
   # Override
-  connect: (@connectKey) ->
+  connect: (key) ->
+
+    if key
+      @connectKey = key
+
     # skip if we are connected
     if @state != DISCONNECTED_STATE
       return
@@ -362,6 +365,7 @@ class Transport extends Dispatcher
     # On open, trigger connecting, set state
     # and send connect event
     @socket.onopen = () =>
+      debug "websocket connected"
       @state = HANDSHAKING_STATE
       @trigger("handshaking")
       @transmit(@encode({
@@ -371,14 +375,16 @@ class Transport extends Dispatcher
 
       
     @socket.onclose = () =>
+      debug "websocket disconnected"
       @state = DISCONNECTED_STATE
       @trigger("disconnect")
       unless @forcedc
         setTimeout((() =>
-          @connect()), 2000)    
+          @connect()), 2000)
 
     @socket.onmessage = (e) =>
-      @trigger("message", @decode(e.data))
+      debug "recv #{e.data}"
+      @trigger "message", @decode(e.data)
 
     @state = CONNECTING_STATE
     @trigger("connecting")
@@ -431,16 +437,12 @@ class Client extends Dispatcher
       @transport.on("handshaking", () => @trigger("handshaking"))
       @transport.on("disconnect", () => @trigger("disconnect"))
       @transport.on("reconnect", () => @onReconnect())
-      @transport.connect(@connectKey)
-
-    debugLog(this, "connect", arguments)
-    
+      @transport.connect @connectKey
     this
        
   # Disconnect from current app
   disconnect: () ->
     @transport.disconnect()
-    debugLog(this,"disconnect")
     this
 
   # Return a channel object for a given app
@@ -459,15 +461,18 @@ class Client extends Dispatcher
 
   # Authenticate with the app to grant
   # client pub/sub rights on all channels
-  authenticate: (@key) ->
+  auth: (@key) -> 
     @transport.send
       opcode: AUTHORIZE
       channel: "*"
       data: @key
     this
 
+  # Deprecated
+  authenticate: (key) -> @auth(key)
+
   # Deprecated: alias for authenticate
-  authorize: (key) -> @authenticate(key)
+  authorize: (key) -> @auth(key)
 
   # Set the available hosts
   setHosts: (hosts) ->
@@ -485,50 +490,44 @@ class Client extends Dispatcher
         @id = e.data
         @transport.connected(e)
         @trigger("connect", e.data)
-        debugLog(this,"process; CONNECT_GRANTED",@id)
-        
       when SUBSCRIBE_GRANTED
         chan.trigger("subscribe", e.data)
-        debugLog(this,"process; SUBSCRIBE",chan.name)
       when UNSUBSCRIBE_COMPLETE
         chan.trigger("unsubscribe", e.data)
-        debugLog(this,"process; UNSUBSCRIBE_COMPLETE",chan.name)
       when SUBSCRIBE_DENIED
         chan.trigger("subscribe_denied", e.data)
-        debugLog(this,"process; SUBSCRIBE_DENIED",chan.name)
-      
       when PUBLISH
         chan.process(e.data, e.from)
-        debugLog(this,"process; PUBLISH",chan.name,e.from,e.data)
       when PUBLISH_GRANTED
         chan.trigger("publish_granted",e.data)
-        debugLog(this,"process; PUBLISH_GRANTED",chan.name,e.data)
       when PUBLISH_DENIED
         chan.trigger("publish_denied", e.data)
-        debugLog(this,"process; PUBLISH_DENIED",chan.name,e.data)
-      
       when AUTHORIZE_GRANTED
         if typeof chan != 'undefined'
           chan.trigger("publish_granted",e.data)
         else
           @authorized = true
           @trigger("authorize", e.data)
-        debugLog(this,"process; AUTHORIZE_GRANTED",chan,e.data)
       when AUTHORIZE_DENIED
         if typeof chan != 'undefined'
           chan.trigger("authorize_denied",e.data)
         else
           @authorized = false
-          @trigger("authorize_denied")
-        debugLog(this,"process; AUTHORIZE_DENIED",chan,e.data)
-      
+          @trigger("authorize_denied") 
       when ERROR
         console.error(e.data)
+      when PRESENCE_SUBSCRIBED
+        chan.trigger("presence_added", e.from)
+      when PRESENCE_UNSUBSCRIBED
+        chan.trigger("presence_removed", e.from)
+      when PRESENCE_LIST
+        chan.trigger("presence_list", e.data.split(","))
       else
         return
     this
     
   onReconnect: () ->
+    # TODO: State
     for name, channel of @channels
       channel.subscribe()
     @trigger("reconnect")

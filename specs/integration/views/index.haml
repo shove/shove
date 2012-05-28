@@ -13,13 +13,14 @@
     .container
       #log
 
+  :javascript
+    //WEB_SOCKET_FORCE_FLASH = true
+
   %script(type="text/javascript" src="/jquery.js")
   %script(type="text/javascript" src="/shove.js")
   %script(type="text/javascript" src="/tests.js")
-
+  
   :javascript
-
-    // WEB_SOCKET_FORCE_FLASH = true
     WEB_SOCKET_LOGGER = {
       log: function(msg) {
         log("ws.swf: " + msg);

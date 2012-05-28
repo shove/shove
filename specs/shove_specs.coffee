@@ -372,4 +372,38 @@ runner.test "should unsubscribe", () ->
   runner.isTrue(trig)
 
 
+runner.test "should trigger presence events", () ->
+  user = null
+  
+  shove.channel("presence:c1").on "presence_added", (from) ->
+    user = from
+
+  shove.channel("presence:c1").on "presence_removed", (from) ->
+    user = from
+
+  shove.channel("presence:c1").on "presence_list", (data) ->
+    user = data
+
+  backdoor.inject
+    opcode: PRESENCE_SUBSCRIBED,
+    channel: "presence:c1",
+    from: "friend"
+
+  runner.areEqual("friend", user)
+
+  backdoor.inject
+    opcode: PRESENCE_UNSUBSCRIBED,
+    channel: "presence:c1",
+    from: "unfriend"
+
+  runner.areEqual("unfriend", user)
+
+  backdoor.inject
+    opcode: PRESENCE_LIST,
+    channel: "presence:c1",
+    data: "item1,item2"
+
+  runner.areEqual(2, user.length)
+
+
 runner.report()

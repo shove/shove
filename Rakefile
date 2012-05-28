@@ -104,6 +104,11 @@ task :integration_test => :build do
   system "cd specs/integration && rackup"
 end
 
+
+task :cbuild do
+  system "#{COFFEE} -w -o ./specs/integration/public/ -c shove.coffee"
+end
+
 desc "Watch files and run the spec, coffee --watch on many + run"
 task :autospec => [:spec] do
 
