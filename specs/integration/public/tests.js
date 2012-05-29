@@ -20,6 +20,8 @@ $(function() {
     log("connected");
   });
 
+
+
   $shove.on("disconnect", function() {
     log("disconnected");
   });
@@ -44,7 +46,19 @@ $(function() {
     log("reconnect");
   });
 
-  var channel = $shove.channel("integration_test");
+  var channel = $shove.channel("presence:integration_test");
+
+  channel.on("presence_added", function(from) {
+    log("user joined: " + from);
+  });
+
+  channel.on("presence_removed", function(from) {
+    log("user left: " + from);
+  });
+
+  channel.on("presence_list", function(list) {
+    log("current users: " + list.length);
+  });
 
   channel.on("subscribing", function() {
     log("subscribing");
