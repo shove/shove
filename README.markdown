@@ -17,7 +17,7 @@ Include the latest version of the shove javascript client.
 Connect the client to your app"s network to enable the client to publish or receive messages from the app and other clients.
 
 ```javascript
-$shove.connect("app_id", "connect_key");
+$shove.connect("{{app_id}}", "{{connect_key}}");
 ```
 
 ### <a name="shove_events" ></a>Bind handlers to shove app networks
