@@ -110,7 +110,7 @@ Filters are applied to incoming messages before the "message" event is fired.  M
 
 ```javascript
 // replaces occurrences of "hello" with "HULLO" for all messages received
-channel.filter(function(msg) {
+channel.filter(function(msg,from) {
   if(msg.hasOwnProperty("data") && typeof msg.data == "string") {
     msg.data = msg.data.replace("hello","HULLO");
   }
@@ -118,7 +118,7 @@ channel.filter(function(msg) {
 });
 
 // Halt messages that contain profanity
-channel.filter(function(msg) {
+channel.filter(function(msg,from) {
   if(msg.hasOwnProperty("data") && typeof msg.data == "string"){
     if(msg.data.search(/(bad|words)/gi) >= 0)
       return false;
@@ -157,7 +157,7 @@ channel.publish(JSON.stringify(complexMessage));
 A filter can be applied to all incoming messages to handle the decoding of data.
 
 ```javascript
-channel.filter(function(m) {
+channel.filter(function(m,from) {
   return JSON.parse(m);
 });
 ```
@@ -180,7 +180,7 @@ complexChannel.on("message", function(message, from) {
 
 simpleChannel.publish("simple messages abound!");
 
-complexChannel.filter(function(m) {
+complexChannel.filter(function(m,from) {
   return JSON.parse(m);
 });
 
