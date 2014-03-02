@@ -53,7 +53,7 @@ $shove.off("connect", fn);
 
 ### <a name="shove_authorize" ></a>Authentication
 
-It"s possible to grant clients publish and subscribe rights on one or more channels.
+It's possible to grant clients publish and subscribe rights on one or more channels.
 
 If your client needs publish/subscribe access on all channels, you can authenticate the client using
 the * channel.  This is only recommended if the client is a trusted client.
